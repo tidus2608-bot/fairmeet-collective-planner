@@ -78,7 +78,7 @@ export function useMeetupsList() {
         .in('id', ids)
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return (data || []) as MeetupRow[];
+      return (data || []) as unknown as MeetupRow[];
     },
     enabled: !!user,
   });
@@ -102,7 +102,7 @@ export function useMeetupDetail(meetupId: string | undefined) {
           new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
         );
       }
-      return data as MeetupRow;
+      return data as unknown as MeetupRow;
     },
     enabled: !!meetupId && !!user,
   });
