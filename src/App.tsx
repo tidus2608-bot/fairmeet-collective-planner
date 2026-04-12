@@ -4,36 +4,43 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import GoogleMapsProvider from "@/components/GoogleMapsProvider";
+import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
 import MeetupDetails from "@/pages/MeetupDetails";
 import NotFound from "@/pages/NotFound";
-import { useAppStore } from "@/store/useAppStore";
 
 const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const user = useAppStore((s) => s.user);
+  const { user, loading } = useAuth();
+  if (loading) return <div className="min-h-screen flex items-center justify-center"><p>Loading...</p></div>;
   if (!user) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 
+const AppRoutes = () => (
+  <BrowserRouter>
+    <Routes>
+      <Route path="/" element={<Login />} />
+      <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+      <Route path="/meetup/:id" element={<ProtectedRoute><MeetupDetails /></ProtectedRoute>} />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  </BrowserRouter>
+);
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <GoogleMapsProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Login />} />
-            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/meetup/:id" element={<ProtectedRoute><MeetupDetails /></ProtectedRoute>} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </GoogleMapsProvider>
-    </TooltipProvider>
+    <AuthProvider>
+      <TooltipProvider>
+        <GoogleMapsProvider>
+          <Toaster />
+          <Sonner />
+          <AppRoutes />
+        </GoogleMapsProvider>
+      </TooltipProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 
