@@ -3,9 +3,10 @@ import { Sparkles, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { useAppStore } from '@/store/useAppStore';
+import { useCreateMeetup } from '@/hooks/useMeetups';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface AiIdeasModalProps {
   open: boolean;
@@ -21,7 +22,7 @@ interface Idea {
 export default function AiIdeasModal({ open, onOpenChange }: AiIdeasModalProps) {
   const [ideas, setIdeas] = useState<Idea[]>([]);
   const [loading, setLoading] = useState(false);
-  const createMeetup = useAppStore((s) => s.createMeetup);
+  const createMeetup = useCreateMeetup();
   const navigate = useNavigate();
 
   const generateIdeas = async () => {
@@ -30,8 +31,7 @@ export default function AiIdeasModal({ open, onOpenChange }: AiIdeasModalProps) 
       const { data, error } = await supabase.functions.invoke('suggest-ideas');
       if (error) throw error;
       setIdeas(data.ideas || []);
-    } catch (err) {
-      // Fallback ideas
+    } catch {
       setIdeas([
         { title: 'Weekend Street Food Tour', description: 'Explore Hanoi\'s best street food stalls together', emoji: '🍜' },
         { title: 'Sunset at West Lake', description: 'Enjoy golden hour with drinks by the lake', emoji: '🌅' },
@@ -42,10 +42,14 @@ export default function AiIdeasModal({ open, onOpenChange }: AiIdeasModalProps) 
     setLoading(false);
   };
 
-  const useIdea = (title: string) => {
-    const id = createMeetup(title);
-    onOpenChange(false);
-    navigate(`/meetup/${id}`);
+  const useIdea = async (title: string) => {
+    try {
+      const meetup = await createMeetup.mutateAsync(title);
+      onOpenChange(false);
+      navigate(`/meetup/${meetup.id}`);
+    } catch (e: any) {
+      toast.error(e.message);
+    }
   };
 
   return (
@@ -53,8 +57,7 @@ export default function AiIdeasModal({ open, onOpenChange }: AiIdeasModalProps) 
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-primary" />
-            AI Meetup Ideas
+            <Sparkles className="w-5 h-5 text-primary" /> AI Meetup Ideas
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
@@ -85,9 +88,7 @@ export default function AiIdeasModal({ open, onOpenChange }: AiIdeasModalProps) 
             </Card>
           ))}
           {ideas.length > 0 && (
-            <Button variant="outline" onClick={generateIdeas} className="w-full" disabled={loading}>
-              Regenerate
-            </Button>
+            <Button variant="outline" onClick={generateIdeas} className="w-full" disabled={loading}>Regenerate</Button>
           )}
         </div>
       </DialogContent>
