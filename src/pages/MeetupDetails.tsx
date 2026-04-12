@@ -1,9 +1,10 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useAppStore } from '@/store/useAppStore';
+import { useAuth } from '@/hooks/useAuth';
+import { useMeetupDetail } from '@/hooks/useMeetups';
 import OverviewTab from '@/components/meetup/OverviewTab';
 import VenuesTab from '@/components/meetup/VenuesTab';
 import VoteTab from '@/components/meetup/VoteTab';
@@ -12,8 +13,12 @@ import ChatTab from '@/components/meetup/ChatTab';
 export default function MeetupDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const meetup = useAppStore((s) => s.meetups.find((m) => m.id === id));
-  const user = useAppStore((s) => s.user);
+  const { user } = useAuth();
+  const { data: meetup, isLoading } = useMeetupDetail(id);
+
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin" /></div>;
+  }
 
   if (!meetup || !user) {
     navigate('/dashboard');
@@ -36,9 +41,7 @@ export default function MeetupDetails() {
           <div className="flex-1 min-w-0">
             <h1 className="font-semibold truncate">{meetup.name}</h1>
           </div>
-          <Badge variant="secondary" className={statusColor(meetup.status)}>
-            {meetup.status}
-          </Badge>
+          <Badge variant="secondary" className={statusColor(meetup.status)}>{meetup.status}</Badge>
         </div>
       </header>
 
