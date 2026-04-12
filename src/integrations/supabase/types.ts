@@ -14,13 +14,246 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      chat_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          meetup_id: string
+          user_id: string
+          user_name: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          meetup_id: string
+          user_id: string
+          user_name: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          meetup_id?: string
+          user_id?: string
+          user_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_meetup_id_fkey"
+            columns: ["meetup_id"]
+            isOneToOne: false
+            referencedRelation: "meetups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meetups: {
+        Row: {
+          created_at: string
+          final_venue: Json | null
+          id: string
+          invite_code: string
+          name: string
+          organizer_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          final_venue?: Json | null
+          id?: string
+          invite_code?: string
+          name: string
+          organizer_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          final_venue?: Json | null
+          id?: string
+          invite_code?: string
+          name?: string
+          organizer_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      participants: {
+        Row: {
+          address: string | null
+          avatar_url: string | null
+          created_at: string
+          id: string
+          location: Json | null
+          meetup_id: string
+          status: string
+          transport_mode: string
+          user_id: string
+          user_name: string
+        }
+        Insert: {
+          address?: string | null
+          avatar_url?: string | null
+          created_at?: string
+          id?: string
+          location?: Json | null
+          meetup_id: string
+          status?: string
+          transport_mode?: string
+          user_id: string
+          user_name: string
+        }
+        Update: {
+          address?: string | null
+          avatar_url?: string | null
+          created_at?: string
+          id?: string
+          location?: Json | null
+          meetup_id?: string
+          status?: string
+          transport_mode?: string
+          user_id?: string
+          user_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "participants_meetup_id_fkey"
+            columns: ["meetup_id"]
+            isOneToOne: false
+            referencedRelation: "meetups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      poll_votes: {
+        Row: {
+          created_at: string
+          id: string
+          meetup_id: string
+          user_id: string
+          venue_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          meetup_id: string
+          user_id: string
+          venue_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          meetup_id?: string
+          user_id?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poll_votes_meetup_id_fkey"
+            columns: ["meetup_id"]
+            isOneToOne: false
+            referencedRelation: "meetups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poll_votes_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venue_suggestions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      venue_suggestions: {
+        Row: {
+          address: string
+          ai_theme: string | null
+          category: string
+          created_at: string
+          id: string
+          in_poll: boolean
+          location: Json
+          meetup_id: string
+          name: string
+          rating: number
+          travel_times: Json | null
+        }
+        Insert: {
+          address: string
+          ai_theme?: string | null
+          category?: string
+          created_at?: string
+          id?: string
+          in_poll?: boolean
+          location: Json
+          meetup_id: string
+          name: string
+          rating?: number
+          travel_times?: Json | null
+        }
+        Update: {
+          address?: string
+          ai_theme?: string | null
+          category?: string
+          created_at?: string
+          id?: string
+          in_poll?: boolean
+          location?: Json
+          meetup_id?: string
+          name?: string
+          rating?: number
+          travel_times?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_suggestions_meetup_id_fkey"
+            columns: ["meetup_id"]
+            isOneToOne: false
+            referencedRelation: "meetups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_meetup_participant: {
+        Args: { _meetup_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
