@@ -1,7 +1,7 @@
 import { LoadScript } from '@react-google-maps/api';
 import { ReactNode } from 'react';
 
-const GOOGLE_MAPS_API_KEY = 'AIzaSyB_Qq9DwLduRjMd7AkAuKyYYAWehQCqTWo';
+const GOOGLE_MAPS_API_KEY = 'AIzaSyDl2gzzUO5n5BfQ9CxJZ0BeKVDVxwlknnQ';
 
 const libraries: ("places")[] = ['places'];
 
