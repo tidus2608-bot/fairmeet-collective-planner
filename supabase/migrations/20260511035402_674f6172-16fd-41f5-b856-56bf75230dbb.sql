@@ -1,0 +1,1 @@
+CREATE POLICY "Organizer can view own meetup" ON public.meetups FOR SELECT USING (auth.uid() = organizer_id);
