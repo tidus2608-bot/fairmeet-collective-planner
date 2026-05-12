@@ -68,7 +68,10 @@ export default function VenuesTab({ meetup, userId }: Props) {
     setLoadingVenues(true);
     try {
       const { data, error } = await supabase.functions.invoke('calculate-midpoint', {
-        body: { participants: participants.filter((p) => p.location) },
+        body: {
+          participants: participants.filter((p) => p.location),
+          preferences: prefs ?? DEFAULT_PREFS,
+        },
       });
       if (error) throw error;
       if (data.venues?.length) {
