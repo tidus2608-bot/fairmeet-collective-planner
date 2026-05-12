@@ -20,6 +20,7 @@ export default function VenuesTab({ meetup, userId }: Props) {
   const addVenues = useAddVenues();
   const setAiTheme = useSetVenueAiTheme();
   const togglePoll = useToggleVenuePoll();
+  const { data: prefs } = useUserPreferences();
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [loadingVenues, setLoadingVenues] = useState(false);
   const [brainstormingId, setBrainstormingId] = useState<string | null>(null);
