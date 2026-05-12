@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { MeetupRow, VenueRow, useAddVenues, useSetVenueAiTheme, useToggleVenuePoll } from '@/hooks/useMeetups';
 import MeetupMap from '@/components/MeetupMap';
 import { supabase } from '@/integrations/supabase/client';
+import { useUserPreferences, DEFAULT_PREFS } from '@/hooks/useUserPreferences';
 import { toast } from 'sonner';
 
 const categories = ['Food', 'Drinks', 'Coffee', 'Park'] as const;
