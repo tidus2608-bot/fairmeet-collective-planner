@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { MeetupRow, VenueRow, useAddVenues, useSetVenueAiTheme, useToggleVenuePoll } from '@/hooks/useMeetups';
 import MeetupMap from '@/components/MeetupMap';
 import { supabase } from '@/integrations/supabase/client';
+import { useUserPreferences, DEFAULT_PREFS } from '@/hooks/useUserPreferences';
 import { toast } from 'sonner';
 
 const categories = ['Food', 'Drinks', 'Coffee', 'Park'] as const;
@@ -19,6 +20,7 @@ export default function VenuesTab({ meetup, userId }: Props) {
   const addVenues = useAddVenues();
   const setAiTheme = useSetVenueAiTheme();
   const togglePoll = useToggleVenuePoll();
+  const { data: prefs } = useUserPreferences();
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [loadingVenues, setLoadingVenues] = useState(false);
   const [brainstormingId, setBrainstormingId] = useState<string | null>(null);
@@ -66,7 +68,10 @@ export default function VenuesTab({ meetup, userId }: Props) {
     setLoadingVenues(true);
     try {
       const { data, error } = await supabase.functions.invoke('calculate-midpoint', {
-        body: { participants: participants.filter((p) => p.location) },
+        body: {
+          participants: participants.filter((p) => p.location),
+          preferences: prefs ?? DEFAULT_PREFS,
+        },
       });
       if (error) throw error;
       if (data.venues?.length) {
