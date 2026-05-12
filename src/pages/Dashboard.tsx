@@ -50,6 +50,9 @@ export default function Dashboard() {
           <Avatar className="h-8 w-8">
             <AvatarFallback>{displayName[0]}</AvatarFallback>
           </Avatar>
+          <Button variant="ghost" size="icon" onClick={() => navigate('/settings')} aria-label="Preferences">
+            <SettingsIcon className="w-4 h-4" />
+          </Button>
           <Button variant="ghost" size="icon" onClick={() => { signOut(); navigate('/'); }}>
             <LogOut className="w-4 h-4" />
           </Button>
