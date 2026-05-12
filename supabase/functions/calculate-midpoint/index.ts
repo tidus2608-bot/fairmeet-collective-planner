@@ -189,6 +189,7 @@ Deno.serve(async (req) => {
         return { c, maxT, variance, travel_times };
       })
       .filter((x): x is NonNullable<typeof x> => x !== null)
+      .filter((x) => x.maxT / 60 <= maxTravelMin)
       .sort((a, b) => a.maxT - b.maxT || a.variance - b.variance);
 
     // ===== Step 4: Take top venues, balanced across categories =====
