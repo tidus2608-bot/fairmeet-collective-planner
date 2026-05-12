@@ -2,70 +2,191 @@ import { corsHeaders } from '@supabase/supabase-js/cors';
 
 const GOOGLE_MAPS_API_KEY = Deno.env.get('GOOGLE_MAPS_API_KEY');
 
+// Map our transport mode to Google Distance Matrix mode
+const MODE_MAP: Record<string, string> = {
+  driving: 'driving',
+  walking: 'walking',
+  cycling: 'bicycling',
+  transit: 'transit',
+};
+
+// Google Places type -> our category
+const TYPE_TO_CATEGORY: Record<string, string> = {
+  restaurant: 'Food',
+  cafe: 'Coffee',
+  bar: 'Drinks',
+  park: 'Park',
+};
+
+interface Participant {
+  user_id: string;
+  location: { lat: number; lng: number };
+  transport_mode?: string;
+}
+
+interface Candidate {
+  place_id: string;
+  name: string;
+  category: string;
+  rating: number;
+  address: string;
+  location: { lat: number; lng: number };
+}
+
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
-  }
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    const { participants } = await req.json();
+    const { participants } = (await req.json()) as { participants: Participant[] };
+    const located = (participants || []).filter((p) => p?.location);
 
-    // Calculate geographic centroid
-    const locs = participants.filter((p: any) => p.location).map((p: any) => p.location);
-    if (locs.length === 0) {
+    if (located.length === 0) {
       return new Response(JSON.stringify({ error: 'No participant locations' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-
-    const midpoint = {
-      lat: locs.reduce((s: number, l: any) => s + l.lat, 0) / locs.length,
-      lng: locs.reduce((s: number, l: any) => s + l.lng, 0) / locs.length,
-    };
-
-    // Search nearby places using Google Places API
-    const types = ['restaurant', 'cafe', 'bar', 'park'];
-    const allVenues: any[] = [];
-
-    for (const type of types) {
-      try {
-        const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${midpoint.lat},${midpoint.lng}&radius=2000&type=${type}&key=${GOOGLE_MAPS_API_KEY}`;
-        const res = await fetch(url);
-        const data = await res.json();
-
-        const categoryMap: Record<string, string> = {
-          restaurant: 'Food',
-          cafe: 'Coffee',
-          bar: 'Drinks',
-          park: 'Park',
-        };
-
-        if (data.results) {
-          const venues = data.results.slice(0, 3).map((place: any) => ({
-            id: `v-${place.place_id}`,
-            name: place.name,
-            category: categoryMap[type] || 'Food',
-            rating: place.rating || 4.0,
-            address: place.vicinity || '',
-            location: {
-              lat: place.geometry.location.lat,
-              lng: place.geometry.location.lng,
-            },
-            travelTimes: {},
-          }));
-          allVenues.push(...venues);
-        }
-      } catch {
-        // Skip failed type
-      }
+    if (!GOOGLE_MAPS_API_KEY) {
+      return new Response(JSON.stringify({ error: 'GOOGLE_MAPS_API_KEY not configured' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    return new Response(JSON.stringify({ midpoint, venues: allVenues }), {
+    // ===== Step 1: Generate candidate venues by searching outward from EACH participant =====
+    // Radius scaled so candidate pools overlap; tweakable.
+    const SEARCH_RADIUS_M = 2500;
+    const types = Object.keys(TYPE_TO_CATEGORY);
+    const candidatesById = new Map<string, Candidate>();
+
+    await Promise.all(
+      located.flatMap((p) =>
+        types.map(async (type) => {
+          const url =
+            `https://maps.googleapis.com/maps/api/place/nearbysearch/json` +
+            `?location=${p.location.lat},${p.location.lng}` +
+            `&radius=${SEARCH_RADIUS_M}&type=${type}&key=${GOOGLE_MAPS_API_KEY}`;
+          try {
+            const res = await fetch(url);
+            const data = await res.json();
+            for (const place of (data.results || []).slice(0, 8)) {
+              if (!place.place_id || candidatesById.has(place.place_id)) continue;
+              candidatesById.set(place.place_id, {
+                place_id: place.place_id,
+                name: place.name,
+                category: TYPE_TO_CATEGORY[type],
+                rating: place.rating || 4.0,
+                address: place.vicinity || '',
+                location: {
+                  lat: place.geometry.location.lat,
+                  lng: place.geometry.location.lng,
+                },
+              });
+            }
+          } catch (_e) {
+            // skip failed search
+          }
+        })
+      )
+    );
+
+    const candidates = Array.from(candidatesById.values());
+    if (candidates.length === 0) {
+      return new Response(JSON.stringify({ venues: [], note: 'No candidates from Places API' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // ===== Step 2: Distance Matrix from each participant to all candidates =====
+    // One request per participant (origin), all candidates as destinations.
+    // Distance Matrix supports up to 25 destinations per request — chunk if needed.
+    const DEST_CHUNK = 25;
+    // travelMatrix[userId][place_id] = seconds
+    const travelMatrix: Record<string, Record<string, number>> = {};
+
+    await Promise.all(
+      located.map(async (p) => {
+        travelMatrix[p.user_id] = {};
+        const mode = MODE_MAP[p.transport_mode || 'driving'] || 'driving';
+
+        for (let i = 0; i < candidates.length; i += DEST_CHUNK) {
+          const chunk = candidates.slice(i, i + DEST_CHUNK);
+          const dests = chunk.map((c) => `${c.location.lat},${c.location.lng}`).join('|');
+          const url =
+            `https://maps.googleapis.com/maps/api/distancematrix/json` +
+            `?origins=${p.location.lat},${p.location.lng}` +
+            `&destinations=${encodeURIComponent(dests)}` +
+            `&mode=${mode}&key=${GOOGLE_MAPS_API_KEY}`;
+          try {
+            const res = await fetch(url);
+            const data = await res.json();
+            const elements = data.rows?.[0]?.elements || [];
+            chunk.forEach((c, idx) => {
+              const el = elements[idx];
+              if (el?.status === 'OK' && el.duration?.value != null) {
+                travelMatrix[p.user_id][c.place_id] = el.duration.value;
+              }
+            });
+          } catch (_e) {
+            // skip failed chunk
+          }
+        }
+      })
+    );
+
+    // ===== Step 3: Score each candidate by fairness =====
+    // Primary: minimize the WORST (max) travel time across the group.
+    // Tiebreaker: minimize variance (everyone roughly equal).
+    const scored = candidates
+      .map((c) => {
+        const times: number[] = [];
+        const travel_times: Record<string, number> = {};
+        for (const p of located) {
+          const t = travelMatrix[p.user_id]?.[c.place_id];
+          if (t == null) return null;
+          times.push(t);
+          travel_times[p.user_id] = Math.round(t / 60); // store minutes
+        }
+        const maxT = Math.max(...times);
+        const meanT = times.reduce((s, v) => s + v, 0) / times.length;
+        const variance = times.reduce((s, v) => s + (v - meanT) ** 2, 0) / times.length;
+        return { c, maxT, variance, travel_times };
+      })
+      .filter((x): x is NonNullable<typeof x> => x !== null)
+      .sort((a, b) => a.maxT - b.maxT || a.variance - b.variance);
+
+    // ===== Step 4: Take top venues, balanced across categories =====
+    const PER_CATEGORY = 3;
+    const byCategory: Record<string, typeof scored> = {};
+    for (const item of scored) {
+      (byCategory[item.c.category] ||= []).push(item);
+    }
+    const venues = Object.values(byCategory).flatMap((arr) =>
+      arr.slice(0, PER_CATEGORY).map(({ c, travel_times, maxT }) => ({
+        id: `v-${c.place_id}`,
+        name: c.name,
+        category: c.category,
+        rating: c.rating,
+        address: c.address,
+        location: c.location,
+        travel_times,
+        ai_theme: null,
+        in_poll: false,
+        worst_minutes: Math.round(maxT / 60),
+      }))
+    );
+
+    // Reference midpoint just for map centering / circle (not used for selection)
+    const midpoint = {
+      lat: located.reduce((s, p) => s + p.location.lat, 0) / located.length,
+      lng: located.reduce((s, p) => s + p.location.lng, 0) / located.length,
+    };
+
+    return new Response(JSON.stringify({ midpoint, venues }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: (error as Error).message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
