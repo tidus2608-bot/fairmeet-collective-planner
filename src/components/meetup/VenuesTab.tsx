@@ -137,6 +137,27 @@ export default function VenuesTab({ meetup, userId }: Props) {
                 </div>
               </div>
               <p className="text-sm text-muted-foreground">{v.address}</p>
+              {v.travel_times && Object.keys(v.travel_times).length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {participants
+                    .filter((p) => v.travel_times?.[p.user_id] != null)
+                    .map((p) => {
+                      const mins = v.travel_times![p.user_id];
+                      const worst = Math.max(...Object.values(v.travel_times!));
+                      const isWorst = mins === worst;
+                      return (
+                        <Badge
+                          key={p.user_id}
+                          variant={isWorst ? 'default' : 'outline'}
+                          className="text-xs gap-1"
+                        >
+                          <Clock className="w-3 h-3" />
+                          {p.user_name.split(' ')[0]} {mins}m
+                        </Badge>
+                      );
+                    })}
+                </div>
+              )}
               {v.ai_theme && (
                 <div className="bg-primary/5 border border-primary/10 rounded-lg p-3">
                   <p className="text-sm">✨ {v.ai_theme}</p>
