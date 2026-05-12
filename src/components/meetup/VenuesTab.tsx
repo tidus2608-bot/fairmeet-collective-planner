@@ -108,7 +108,7 @@ export default function VenuesTab({ meetup, userId }: Props) {
       {venues.length === 0 && (
         <Button onClick={handleFindVenues} className="w-full gap-2" disabled={loadingVenues}>
           {loadingVenues ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
-          Find Venues in Fair Zone
+          Find Fair Venues (by travel time)
         </Button>
       )}
 
