@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Sparkles, Plus, Loader2, MapPin, Star } from 'lucide-react';
+import { Sparkles, Plus, Loader2, MapPin, Star, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
