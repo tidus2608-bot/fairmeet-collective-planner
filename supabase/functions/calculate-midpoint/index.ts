@@ -20,6 +20,20 @@ const TYPE_TO_CATEGORY: Record<string, string> = {
   bar: 'Drinks',
   park: 'Park',
 };
+const CATEGORY_TO_TYPE: Record<string, string> = {
+  Food: 'restaurant',
+  Coffee: 'cafe',
+  Drinks: 'bar',
+  Park: 'park',
+};
+
+interface Preferences {
+  categories?: string[];
+  min_rating?: number;
+  max_travel_minutes?: number;
+  price_levels?: number[];
+  keyword?: string;
+}
 
 interface Participant {
   user_id: string;
