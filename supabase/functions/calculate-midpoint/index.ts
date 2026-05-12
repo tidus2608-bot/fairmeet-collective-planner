@@ -54,7 +54,10 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    const { participants } = (await req.json()) as { participants: Participant[] };
+    const { participants, preferences } = (await req.json()) as {
+      participants: Participant[];
+      preferences?: Preferences;
+    };
     const located = (participants || []).filter((p) => p?.location);
 
     if (located.length === 0) {
@@ -70,29 +73,45 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ===== Apply preferences =====
+    const prefCategories =
+      preferences?.categories?.length ? preferences.categories : Object.values(TYPE_TO_CATEGORY);
+    const types = prefCategories
+      .map((c) => CATEGORY_TO_TYPE[c])
+      .filter(Boolean);
+    const minRating = preferences?.min_rating ?? 0;
+    const maxTravelMin = preferences?.max_travel_minutes ?? 120;
+    const priceLevels = preferences?.price_levels ?? [0, 1, 2, 3, 4];
+    const keyword = (preferences?.keyword || '').trim();
+    const minprice = Math.min(...priceLevels);
+    const maxprice = Math.max(...priceLevels);
+
     // ===== Step 1: Generate candidate venues by searching outward from EACH participant =====
-    // Radius scaled so candidate pools overlap; tweakable.
     const SEARCH_RADIUS_M = 2500;
-    const types = Object.keys(TYPE_TO_CATEGORY);
     const candidatesById = new Map<string, Candidate>();
 
     await Promise.all(
       located.flatMap((p) =>
         types.map(async (type) => {
-          const url =
+          let url =
             `https://maps.googleapis.com/maps/api/place/nearbysearch/json` +
             `?location=${p.location.lat},${p.location.lng}` +
-            `&radius=${SEARCH_RADIUS_M}&type=${type}&key=${GOOGLE_MAPS_API_KEY}`;
+            `&radius=${SEARCH_RADIUS_M}&type=${type}` +
+            `&minprice=${minprice}&maxprice=${maxprice}` +
+            `&key=${GOOGLE_MAPS_API_KEY}`;
+          if (keyword) url += `&keyword=${encodeURIComponent(keyword)}`;
           try {
             const res = await fetch(url);
             const data = await res.json();
             for (const place of (data.results || []).slice(0, 8)) {
               if (!place.place_id || candidatesById.has(place.place_id)) continue;
+              const rating = place.rating || 0;
+              if (rating < minRating) continue;
               candidatesById.set(place.place_id, {
                 place_id: place.place_id,
                 name: place.name,
                 category: TYPE_TO_CATEGORY[type],
-                rating: place.rating || 4.0,
+                rating: rating || 4.0,
                 address: place.vicinity || '',
                 location: {
                   lat: place.geometry.location.lat,
