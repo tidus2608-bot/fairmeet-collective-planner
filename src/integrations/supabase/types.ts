@@ -195,6 +195,42 @@ export type Database = {
         }
         Relationships: []
       }
+      user_preferences: {
+        Row: {
+          categories: string[]
+          created_at: string
+          id: string
+          keyword: string
+          max_travel_minutes: number
+          min_rating: number
+          price_levels: number[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          categories?: string[]
+          created_at?: string
+          id?: string
+          keyword?: string
+          max_travel_minutes?: number
+          min_rating?: number
+          price_levels?: number[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          categories?: string[]
+          created_at?: string
+          id?: string
+          keyword?: string
+          max_travel_minutes?: number
+          min_rating?: number
+          price_levels?: number[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       venue_suggestions: {
         Row: {
           address: string
