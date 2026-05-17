@@ -1,3 +1,5 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -5,7 +7,7 @@ const corsHeaders = {
 
 const GOOGLE_MAPS_API_KEY = Deno.env.get('GOOGLE_MAPS_API_KEY');
 
-// Map our transport mode to Google Distance Matrix mode
+// Our transport mode -> Google Distance Matrix mode
 const MODE_MAP: Record<string, string> = {
   driving: 'driving',
   walking: 'walking',
@@ -13,27 +15,38 @@ const MODE_MAP: Record<string, string> = {
   transit: 'transit',
 };
 
-// Google Places type -> our category
-const TYPE_TO_CATEGORY: Record<string, string> = {
-  restaurant: 'Food',
-  cafe: 'Coffee',
-  bar: 'Drinks',
-  park: 'Park',
-};
-const CATEGORY_TO_TYPE: Record<string, string> = {
+// Our category -> Places API (New) text-query term
+const CATEGORY_QUERY: Record<string, string> = {
   Food: 'restaurant',
-  Coffee: 'cafe',
+  Coffee: 'coffee shop',
   Drinks: 'bar',
   Park: 'park',
 };
 
-interface Preferences {
-  categories?: string[];
-  min_rating?: number;
-  max_travel_minutes?: number;
-  price_levels?: number[];
-  keyword?: string;
+// Places API (New) price-level enum, indexed 0..4
+const PRICE_ENUM = [
+  'PRICE_LEVEL_FREE',
+  'PRICE_LEVEL_INEXPENSIVE',
+  'PRICE_LEVEL_MODERATE',
+  'PRICE_LEVEL_EXPENSIVE',
+  'PRICE_LEVEL_VERY_EXPENSIVE',
+];
+
+interface Prefs {
+  categories: string[];
+  min_rating: number;
+  max_travel_minutes: number;
+  price_levels: number[];
+  keyword: string;
 }
+
+const DEFAULT_PREFS: Prefs = {
+  categories: ['Food', 'Coffee', 'Drinks', 'Park'],
+  min_rating: 0,
+  max_travel_minutes: 60,
+  price_levels: [0, 1, 2, 3, 4],
+  keyword: '',
+};
 
 interface Participant {
   user_id: string;
@@ -50,94 +63,161 @@ interface Candidate {
   location: { lat: number; lng: number };
 }
 
+function json(payload: unknown, status = 200) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    const { participants, preferences } = (await req.json()) as {
-      participants: Participant[];
-      preferences?: Preferences;
-    };
-    const located = (participants || []).filter((p) => p?.location);
+    const { participants } = (await req.json()) as { participants: Participant[] };
+    const located = (participants || []).filter((p) => p?.location && p?.user_id);
 
     if (located.length === 0) {
-      return new Response(JSON.stringify({ error: 'No participant locations' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return json({ error: 'No participant locations' }, 400);
     }
     if (!GOOGLE_MAPS_API_KEY) {
-      return new Response(JSON.stringify({ error: 'GOOGLE_MAPS_API_KEY not configured' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return json({ error: 'GOOGLE_MAPS_API_KEY not configured' }, 500);
     }
 
-    // ===== Apply preferences =====
-    const prefCategories =
-      preferences?.categories?.length ? preferences.categories : Object.values(TYPE_TO_CATEGORY);
-    const types = prefCategories
-      .map((c) => CATEGORY_TO_TYPE[c])
-      .filter(Boolean);
-    const minRating = preferences?.min_rating ?? 0;
-    const maxTravelMin = preferences?.max_travel_minutes ?? 120;
-    const priceLevels = preferences?.price_levels ?? [0, 1, 2, 3, 4];
-    const keyword = (preferences?.keyword || '').trim();
-    const minprice = Math.min(...priceLevels);
-    const maxprice = Math.max(...priceLevels);
+    // ===== Step 0: fetch EACH participant's stored preferences =====
+    // RLS only lets a user read their own prefs, so use the service-role client.
+    const prefsByUser = new Map<string, Prefs>();
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if (supabaseUrl && serviceKey) {
+      const supabase = createClient(supabaseUrl, serviceKey);
+      const { data: prefRows } = await supabase
+        .from('user_preferences')
+        .select('user_id, categories, min_rating, max_travel_minutes, price_levels, keyword')
+        .in('user_id', located.map((p) => p.user_id));
+      for (const r of prefRows || []) {
+        prefsByUser.set(r.user_id, {
+          categories: r.categories?.length ? r.categories : DEFAULT_PREFS.categories,
+          min_rating: Number(r.min_rating ?? 0),
+          max_travel_minutes: r.max_travel_minutes ?? DEFAULT_PREFS.max_travel_minutes,
+          price_levels: r.price_levels?.length ? r.price_levels : DEFAULT_PREFS.price_levels,
+          keyword: (r.keyword ?? '').trim(),
+        });
+      }
+    }
+    const prefsFor = (userId: string): Prefs => prefsByUser.get(userId) ?? DEFAULT_PREFS;
+    const allPrefs = located.map((p) => prefsFor(p.user_id));
 
-    // ===== Step 1: Generate candidate venues by searching outward from EACH participant =====
-    const SEARCH_RADIUS_M = 2500;
+    // ===== Group conflict resolution =====
+    // Price conflict: mathematical average of each user's mean price tier,
+    // widened by +/-1 into a band.
+    const userPriceMeans = allPrefs.map((pr) => {
+      const pl = pr.price_levels.length ? pr.price_levels : DEFAULT_PREFS.price_levels;
+      return pl.reduce((s, v) => s + v, 0) / pl.length;
+    });
+    const groupPriceMean = userPriceMeans.reduce((s, v) => s + v, 0) / userPriceMeans.length;
+    const minPriceIdx = Math.max(0, Math.round(groupPriceMean) - 1);
+    const maxPriceIdx = Math.min(4, Math.round(groupPriceMean) + 1);
+    const priceLevels = PRICE_ENUM.slice(minPriceIdx, maxPriceIdx + 1);
+
+    // Rating: strictest member wins (highest min_rating).
+    const minRating = Math.max(0, ...allPrefs.map((pr) => pr.min_rating));
+    // Travel cap: strictest member wins (lowest max_travel_minutes).
+    const maxTravelMin = Math.min(...allPrefs.map((pr) => pr.max_travel_minutes));
+
+    // Hard constraints: AND of every distinct keyword across the group
+    // (e.g. "Vegan AND Gluten-Free"), folded into the Places text query.
+    const hardKeywords = [...new Set(allPrefs.map((pr) => pr.keyword).filter(Boolean))];
+    const hardQuery = hardKeywords.join(' AND ');
+
+    // Location bias = rough centroid of the participants.
+    const center = {
+      lat: located.reduce((s, p) => s + p.location.lat, 0) / located.length,
+      lng: located.reduce((s, p) => s + p.location.lng, 0) / located.length,
+    };
+
+    // ===== Step 1: Multi-batch tournament =====
+    // Fetch up to 3 candidate venues for EACH participant's own preferences,
+    // then combine — every member's taste is represented in the pool.
+    const TOURNAMENT_PER_USER = 3;
     const candidatesById = new Map<string, Candidate>();
 
     await Promise.all(
-      located.flatMap((p) =>
-        types.map(async (type) => {
-          let url =
-            `https://maps.googleapis.com/maps/api/place/nearbysearch/json` +
-            `?location=${p.location.lat},${p.location.lng}` +
-            `&radius=${SEARCH_RADIUS_M}&type=${type}` +
-            `&minprice=${minprice}&maxprice=${maxprice}` +
-            `&key=${GOOGLE_MAPS_API_KEY}`;
-          if (keyword) url += `&keyword=${encodeURIComponent(keyword)}`;
+      located.map(async (p) => {
+        const prefs = prefsFor(p.user_id);
+        const cats = prefs.categories.length ? prefs.categories : DEFAULT_PREFS.categories;
+        const userPool: Candidate[] = [];
+
+        for (const cat of cats) {
+          const term = CATEGORY_QUERY[cat];
+          if (!term) continue;
+          const textQuery = [hardQuery, term].filter(Boolean).join(' ');
+          const body: Record<string, unknown> = {
+            textQuery,
+            locationBias: {
+              circle: {
+                center: { latitude: center.lat, longitude: center.lng },
+                radius: 5000,
+              },
+            },
+            maxResultCount: 5,
+          };
+          if (priceLevels.length) body.priceLevels = priceLevels;
+          if (minRating > 0) body.minRating = minRating;
+
           try {
-            const res = await fetch(url);
+            const res = await fetch('https://places.googleapis.com/v1/places:searchText', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Goog-Api-Key': GOOGLE_MAPS_API_KEY,
+                'X-Goog-FieldMask':
+                  'places.id,places.displayName,places.formattedAddress,places.location,places.rating',
+              },
+              body: JSON.stringify(body),
+            });
             const data = await res.json();
-            for (const place of (data.results || []).slice(0, 8)) {
-              if (!place.place_id || candidatesById.has(place.place_id)) continue;
-              const rating = place.rating || 0;
-              if (rating < minRating) continue;
-              candidatesById.set(place.place_id, {
-                place_id: place.place_id,
-                name: place.name,
-                category: TYPE_TO_CATEGORY[type],
-                rating: rating || 4.0,
-                address: place.vicinity || '',
+            if (!res.ok) {
+              console.error(`Places API error (${res.status}):`, JSON.stringify(data));
+            }
+            for (const place of data.places || []) {
+              if (!place.id) continue;
+              userPool.push({
+                place_id: place.id,
+                name: place.displayName?.text || 'Unknown venue',
+                category: cat,
+                rating: place.rating || 4.0,
+                address: place.formattedAddress || '',
                 location: {
-                  lat: place.geometry.location.lat,
-                  lng: place.geometry.location.lng,
+                  lat: place.location?.latitude,
+                  lng: place.location?.longitude,
                 },
               });
             }
           } catch (_e) {
             // skip failed search
           }
-        })
-      )
+        }
+
+        // This participant's top-3 entrants for the tournament.
+        userPool
+          .filter((c) => c.location.lat != null && c.location.lng != null)
+          .sort((a, b) => b.rating - a.rating)
+          .slice(0, TOURNAMENT_PER_USER)
+          .forEach((c) => {
+            if (!candidatesById.has(c.place_id)) candidatesById.set(c.place_id, c);
+          });
+      })
     );
 
     const candidates = Array.from(candidatesById.values());
     if (candidates.length === 0) {
-      return new Response(JSON.stringify({ venues: [], note: 'No candidates from Places API' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return json({ midpoint: center, venues: [], note: 'No candidates from Places API' });
     }
 
     // ===== Step 2: Distance Matrix from each participant to all candidates =====
-    // One request per participant (origin), all candidates as destinations.
-    // Distance Matrix supports up to 25 destinations per request — chunk if needed.
+    // The combined tournament pool stays small (<= 25), so a single batch suffices.
     const DEST_CHUNK = 25;
-    // travelMatrix[userId][place_id] = seconds
     const travelMatrix: Record<string, Record<string, number>> = {};
 
     await Promise.all(
@@ -192,40 +272,21 @@ Deno.serve(async (req) => {
       .filter((x) => x.maxT / 60 <= maxTravelMin)
       .sort((a, b) => a.maxT - b.maxT || a.variance - b.variance);
 
-    // ===== Step 4: Take top venues, balanced across categories =====
-    const PER_CATEGORY = 3;
-    const byCategory: Record<string, typeof scored> = {};
-    for (const item of scored) {
-      (byCategory[item.c.category] ||= []).push(item);
-    }
-    const venues = Object.values(byCategory).flatMap((arr) =>
-      arr.slice(0, PER_CATEGORY).map(({ c, travel_times, maxT }) => ({
-        id: `v-${c.place_id}`,
-        name: c.name,
-        category: c.category,
-        rating: c.rating,
-        address: c.address,
-        location: c.location,
-        travel_times,
-        ai_theme: null,
-        in_poll: false,
-        worst_minutes: Math.round(maxT / 60),
-      }))
-    );
+    // ===== Step 4: Cap to the top 5 fairest venues =====
+    const RESULT_CAP = 5;
+    const venues = scored.slice(0, RESULT_CAP).map(({ c, travel_times }) => ({
+      name: c.name,
+      category: c.category,
+      rating: c.rating,
+      address: c.address,
+      location: c.location,
+      travel_times,
+      ai_theme: null,
+      in_poll: false,
+    }));
 
-    // Reference midpoint just for map centering / circle (not used for selection)
-    const midpoint = {
-      lat: located.reduce((s, p) => s + p.location.lat, 0) / located.length,
-      lng: located.reduce((s, p) => s + p.location.lng, 0) / located.length,
-    };
-
-    return new Response(JSON.stringify({ midpoint, venues }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return json({ midpoint: center, venues });
   } catch (error) {
-    return new Response(JSON.stringify({ error: (error as Error).message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return json({ error: (error as Error).message }, 500);
   }
 });
