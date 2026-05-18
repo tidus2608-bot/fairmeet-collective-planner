@@ -20,7 +20,6 @@ const CATEGORY_QUERY: Record<string, string> = {
   Food: 'restaurant',
   Coffee: 'coffee shop',
   Drinks: 'bar',
-  Park: 'park',
 };
 
 // Google place type -> our display category (used to label results from the API)
@@ -41,10 +40,6 @@ const GOOGLE_TYPE_TO_CATEGORY: Record<string, string> = {
   pub: 'Drinks',
   wine_bar: 'Drinks',
   cocktail_bar: 'Drinks',
-  // Park
-  park: 'Park',
-  national_park: 'Park',
-  nature_reserve: 'Park',
 };
 
 /** Map a place's Google type fields to our display category.
@@ -85,7 +80,7 @@ interface Prefs {
 }
 
 const DEFAULT_PREFS: Prefs = {
-  categories: ['Food', 'Coffee', 'Drinks', 'Park'],
+  categories: ['Food', 'Coffee', 'Drinks'],
   min_rating: 0,
   max_travel_minutes: 60,
   price_levels: [1, 2, 3, 4],

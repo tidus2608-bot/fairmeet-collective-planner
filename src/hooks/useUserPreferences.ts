@@ -11,7 +11,7 @@ export interface UserPreferences {
 }
 
 export const DEFAULT_PREFS: UserPreferences = {
-  categories: ['Food', 'Coffee', 'Drinks', 'Park'],
+  categories: ['Food', 'Coffee', 'Drinks'],
   min_rating: 0,
   max_travel_minutes: 60,
   price_levels: [1, 2, 3, 4],

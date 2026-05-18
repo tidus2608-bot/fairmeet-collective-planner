@@ -20,7 +20,7 @@ import { useJoinMeetup } from '@/hooks/useMeetups';
 import { DEFAULT_PREFS, UserPreferences } from '@/hooks/useUserPreferences';
 import { toast } from 'sonner';
 
-const ALL_CATEGORIES = ['Food', 'Coffee', 'Drinks', 'Park'] as const;
+const ALL_CATEGORIES = ['Food', 'Coffee', 'Drinks'] as const;
 const PRICE_LABELS: Record<number, string> = { 1: '$', 2: '$$', 3: '$$$', 4: '$$$$' };
 const TRANSPORT_OPTIONS = [
   { value: 'driving', label: '🚗 Driving' },

@@ -15,7 +15,7 @@ import {
   useSaveUserPreferences,
 } from '@/hooks/useUserPreferences';
 
-const ALL_CATEGORIES = ['Food', 'Coffee', 'Drinks', 'Park'] as const;
+const ALL_CATEGORIES = ['Food', 'Coffee', 'Drinks'] as const;
 const PRICE_LABELS: Record<number, string> = { 1: '$', 2: '$$', 3: '$$$', 4: '$$$$' };
 
 export default function Settings() {
