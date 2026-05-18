@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Sparkles, LogOut, ChevronRight, Loader2, Settings as SettingsIcon } from 'lucide-react';
+import { Plus, LogOut, ChevronRight, Loader2, Settings as SettingsIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -10,7 +10,6 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useAuth } from '@/hooks/useAuth';
 import { useMeetupsList, useCreateMeetup } from '@/hooks/useMeetups';
-import AiIdeasModal from '@/components/AiIdeasModal';
 import { toast } from 'sonner';
 
 export default function Dashboard() {
@@ -20,7 +19,6 @@ export default function Dashboard() {
   const createMeetup = useCreateMeetup();
   const [newMeetupName, setNewMeetupName] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
-  const [aiOpen, setAiOpen] = useState(false);
 
   const displayName = user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'User';
 
@@ -75,9 +73,6 @@ export default function Dashboard() {
               </div>
             </DialogContent>
           </Dialog>
-          <Button variant="secondary" className="gap-2" onClick={() => setAiOpen(true)}>
-            <Sparkles className="w-4 h-4" /> Suggest Ideas
-          </Button>
         </div>
 
         {isLoading ? (
@@ -85,7 +80,7 @@ export default function Dashboard() {
         ) : meetups.length === 0 ? (
           <div className="text-center py-16 text-muted-foreground">
             <p className="text-lg font-medium">No meetups yet</p>
-            <p className="text-sm mt-1">Create one or let AI suggest some ideas!</p>
+            <p className="text-sm mt-1">Create one and invite your friends.</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -114,7 +109,6 @@ export default function Dashboard() {
           </div>
         )}
       </div>
-      <AiIdeasModal open={aiOpen} onOpenChange={setAiOpen} />
     </div>
   );
 }

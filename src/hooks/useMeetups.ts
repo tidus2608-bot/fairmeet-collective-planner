@@ -105,6 +105,9 @@ export function useMeetupDetail(meetupId: string | undefined) {
       return data as unknown as MeetupRow;
     },
     enabled: !!meetupId && !!user,
+    // Poll so new participants joining from another device are reflected
+    // automatically and trigger the venue-search effect.
+    refetchInterval: 15_000,
   });
 }
 
@@ -199,6 +202,26 @@ export function useAddVenues() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ meetupId, venues }: { meetupId: string; venues: Omit<VenueRow, 'id' | 'meetup_id'>[] }) => {
+      const rows = venues.map((v) => ({ ...v, meetup_id: meetupId, location: v.location as any }));
+      const { error } = await supabase.from('venue_suggestions').insert(rows);
+      if (error) throw error;
+    },
+    onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ['meetup', v.meetupId] }),
+  });
+}
+
+/** Delete all existing venue suggestions for a meetup, then insert fresh ones.
+ *  Used when re-running the search after new participants join. */
+export function useReplaceVenues() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ meetupId, venues }: { meetupId: string; venues: Omit<VenueRow, 'id' | 'meetup_id'>[] }) => {
+      const { error: delErr } = await supabase
+        .from('venue_suggestions')
+        .delete()
+        .eq('meetup_id', meetupId);
+      if (delErr) throw delErr;
+      if (venues.length === 0) return;
       const rows = venues.map((v) => ({ ...v, meetup_id: meetupId, location: v.location as any }));
       const { error } = await supabase.from('venue_suggestions').insert(rows);
       if (error) throw error;
