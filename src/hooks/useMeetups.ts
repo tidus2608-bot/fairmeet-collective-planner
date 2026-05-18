@@ -294,6 +294,39 @@ export function useSetMeetupStatus() {
   });
 }
 
+/** Look up a meetup by invite code and add the current user as a participant. */
+export function useJoinMeetup() {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ inviteCode, userName }: { inviteCode: string; userName: string }) => {
+      // Resolve invite code → meetup id
+      const { data: meetup, error: mErr } = await supabase
+        .from('meetups')
+        .select('id')
+        .eq('invite_code', inviteCode)
+        .single();
+      if (mErr || !meetup) throw new Error('Invite not found');
+
+      // Idempotent: skip if already a participant
+      const { data: existing } = await supabase
+        .from('participants')
+        .select('id')
+        .eq('meetup_id', meetup.id)
+        .eq('user_id', user!.id)
+        .maybeSingle();
+      if (existing) return meetup.id;
+
+      const { error: pErr } = await supabase
+        .from('participants')
+        .insert({ meetup_id: meetup.id, user_id: user!.id, user_name: userName });
+      if (pErr) throw pErr;
+      return meetup.id;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['meetups'] }),
+  });
+}
+
 export function useSendChatMessage() {
   const { user } = useAuth();
   const qc = useQueryClient();
