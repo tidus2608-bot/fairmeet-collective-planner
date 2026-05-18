@@ -302,16 +302,21 @@ Deno.serve(async (req) => {
     // ===== Step 3: Score each candidate by fairness =====
     // Primary: minimize the WORST (max) travel time across the group.
     // Tiebreaker: minimize variance (everyone roughly equal).
+    // Travel times are best-effort — if Distance Matrix can't route a leg we
+    // omit that participant from scoring rather than discarding the whole venue.
     const scored = candidates
       .map((c) => {
         const times: number[] = [];
         const travel_times: Record<string, number> = {};
         for (const p of located) {
           const t = travelMatrix[p.user_id]?.[c.place_id];
-          if (t == null) return null;
-          times.push(t);
-          travel_times[p.user_id] = Math.round(t / 60); // store minutes
+          if (t != null) {
+            times.push(t);
+            travel_times[p.user_id] = Math.round(t / 60); // store minutes
+          }
         }
+        // Need at least one travel time to rank by fairness
+        if (times.length === 0) return null;
         const maxT = Math.max(...times);
         const meanT = times.reduce((s, v) => s + v, 0) / times.length;
         const variance = times.reduce((s, v) => s + (v - meanT) ** 2, 0) / times.length;

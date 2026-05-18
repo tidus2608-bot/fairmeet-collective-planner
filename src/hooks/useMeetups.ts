@@ -299,7 +299,19 @@ export function useJoinMeetup() {
   const { user } = useAuth();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ inviteCode, userName }: { inviteCode: string; userName: string }) => {
+    mutationFn: async ({
+      inviteCode,
+      userName,
+      transportMode,
+      location,
+      address,
+    }: {
+      inviteCode: string;
+      userName: string;
+      transportMode?: string;
+      location?: { lat: number; lng: number };
+      address?: string;
+    }) => {
       // Resolve invite code → meetup id
       const { data: meetup, error: mErr } = await supabase
         .from('meetups')
@@ -319,7 +331,13 @@ export function useJoinMeetup() {
 
       const { error: pErr } = await supabase
         .from('participants')
-        .insert({ meetup_id: meetup.id, user_id: user!.id, user_name: userName });
+        .insert({
+          meetup_id: meetup.id,
+          user_id: user!.id,
+          user_name: userName,
+          transport_mode: transportMode || 'driving',
+          ...(location && { location: location as any, address: address || '', status: 'location_set' }),
+        });
       if (pErr) throw pErr;
       return meetup.id;
     },
