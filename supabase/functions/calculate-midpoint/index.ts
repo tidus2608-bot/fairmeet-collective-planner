@@ -66,14 +66,15 @@ function categoryFromTypes(
   return fallback;
 }
 
-// Places API (New) price-level enum, indexed 0..4
-const PRICE_ENUM = [
-  'PRICE_LEVEL_FREE',
-  'PRICE_LEVEL_INEXPENSIVE',
-  'PRICE_LEVEL_MODERATE',
-  'PRICE_LEVEL_EXPENSIVE',
-  'PRICE_LEVEL_VERY_EXPENSIVE',
-];
+// Places API (New) price-level enum.
+// Index matches the integer stored in user_preferences.price_levels (1–4).
+// Level 0 ("Free") is not supported by the searchText endpoint and is omitted.
+const PRICE_ENUM: Record<number, string> = {
+  1: 'PRICE_LEVEL_INEXPENSIVE',
+  2: 'PRICE_LEVEL_MODERATE',
+  3: 'PRICE_LEVEL_EXPENSIVE',
+  4: 'PRICE_LEVEL_VERY_EXPENSIVE',
+};
 
 interface Prefs {
   categories: string[];
@@ -87,7 +88,7 @@ const DEFAULT_PREFS: Prefs = {
   categories: ['Food', 'Coffee', 'Drinks', 'Park'],
   min_rating: 0,
   max_travel_minutes: 60,
-  price_levels: [0, 1, 2, 3, 4],
+  price_levels: [1, 2, 3, 4],
   keyword: '',
 };
 
@@ -159,9 +160,12 @@ Deno.serve(async (req) => {
       return pl.reduce((s, v) => s + v, 0) / pl.length;
     });
     const groupPriceMean = userPriceMeans.reduce((s, v) => s + v, 0) / userPriceMeans.length;
-    const minPriceIdx = Math.max(0, Math.round(groupPriceMean) - 1);
+    const minPriceIdx = Math.max(1, Math.round(groupPriceMean) - 1);
     const maxPriceIdx = Math.min(4, Math.round(groupPriceMean) + 1);
-    const priceLevels = PRICE_ENUM.slice(minPriceIdx, maxPriceIdx + 1);
+    const priceLevels: string[] = [];
+    for (let i = minPriceIdx; i <= maxPriceIdx; i++) {
+      if (PRICE_ENUM[i]) priceLevels.push(PRICE_ENUM[i]);
+    }
 
     // Rating: strictest member wins (highest min_rating).
     const minRating = Math.max(0, ...allPrefs.map((pr) => pr.min_rating));
@@ -206,9 +210,7 @@ Deno.serve(async (req) => {
             },
             maxResultCount: 5,
           };
-          // Google Places API (New) does not support PRICE_LEVEL_FREE in searchText filters.
-          const validPriceLevels = priceLevels.filter((p) => p !== 'PRICE_LEVEL_FREE');
-          if (validPriceLevels.length) body.priceLevels = validPriceLevels;
+          if (priceLevels.length) body.priceLevels = priceLevels;
           if (minRating > 0) body.minRating = minRating;
 
           try {
