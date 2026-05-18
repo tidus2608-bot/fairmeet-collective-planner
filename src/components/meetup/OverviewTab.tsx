@@ -1,4 +1,5 @@
 import { MapPin, Navigation, Copy, Trash2, LogOut, Check, Clock, ExternalLink } from 'lucide-react';
+import CalendarExportDialog from '@/components/meetup/CalendarExportDialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -104,11 +105,19 @@ export default function OverviewTab({ meetup, userId }: Props) {
           <CardContent className="space-y-2">
             <p className="font-semibold">{(meetup.final_venue as any).name}</p>
             <p className="text-sm text-muted-foreground">{(meetup.final_venue as any).address}</p>
-            <Button variant="outline" size="sm" className="gap-2" asChild>
-              <a href={`https://www.google.com/maps/dir/?api=1&destination=${(meetup.final_venue as any).location?.lat},${(meetup.final_venue as any).location?.lng}`} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="w-3.5 h-3.5" /> Get Directions
-              </a>
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" className="gap-2" asChild>
+                <a href={`https://www.google.com/maps/dir/?api=1&destination=${(meetup.final_venue as any).location?.lat},${(meetup.final_venue as any).location?.lng}`} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="w-3.5 h-3.5" /> Get Directions
+                </a>
+              </Button>
+              <CalendarExportDialog
+                meetupName={meetup.name}
+                meetupId={meetup.id}
+                venueName={(meetup.final_venue as any).name}
+                venueAddress={(meetup.final_venue as any).address}
+              />
+            </div>
           </CardContent>
         </Card>
       )}

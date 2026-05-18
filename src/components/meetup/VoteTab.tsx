@@ -1,7 +1,8 @@
-import { Check, Crown } from 'lucide-react';
+import { Check, Crown, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { MeetupRow, useCastVote, useConfirmVenue, useSetMeetupStatus } from '@/hooks/useMeetups';
+import CalendarExportDialog from '@/components/meetup/CalendarExportDialog';
 import { toast } from 'sonner';
 
 interface Props {
@@ -30,6 +31,58 @@ export default function VoteTab({ meetup, userId }: Props) {
         {isOrganizer && meetup.status === 'Planning' && (meetup.venue_suggestions?.length || 0) > 0 && (
           <Button className="mt-4" onClick={() => setStatus.mutate({ meetupId: meetup.id, status: 'Voting' })}>Start Voting Phase</Button>
         )}
+      </div>
+    );
+  }
+
+  // Confirmed banner — visible to everyone once the organizer picks a winner
+  if (meetup.status === 'Confirmed' && meetup.final_venue) {
+    const venue = meetup.final_venue as any;
+    return (
+      <div className="space-y-4">
+        <Card className="border-green-200 bg-green-50">
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center gap-2 text-green-800">
+              <Check className="w-5 h-5" />
+              <span className="font-semibold">Venue Confirmed!</span>
+            </div>
+            <div>
+              <p className="font-semibold">{venue.name}</p>
+              <p className="text-sm text-muted-foreground flex items-start gap-1 mt-0.5">
+                <MapPin className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                {venue.address}
+              </p>
+            </div>
+            <CalendarExportDialog
+              meetupName={meetup.name}
+              meetupId={meetup.id}
+              venueName={venue.name}
+              venueAddress={venue.address}
+            />
+          </CardContent>
+        </Card>
+
+        {/* Keep the poll results visible below for reference */}
+        <p className="text-xs text-muted-foreground px-1">Final vote tally</p>
+        <div className="space-y-3">
+          {pollVenues.map((v) => {
+            const count = getVoteCount(v.id);
+            const pct = (count / maxVotes) * 100;
+            return (
+              <Card key={v.id}>
+                <CardContent className="p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-semibold text-sm">{v.name}</h4>
+                    <span className="text-sm font-medium">{count} vote{count !== 1 ? 's' : ''}</span>
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                    <div className="bg-primary h-full rounded-full" style={{ width: `${pct}%` }} />
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       </div>
     );
   }
