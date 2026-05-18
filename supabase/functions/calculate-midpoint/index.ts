@@ -15,13 +15,56 @@ const MODE_MAP: Record<string, string> = {
   transit: 'transit',
 };
 
-// Our category -> Places API (New) text-query term
+// Our category -> Places API (New) text-query term (used for searching)
 const CATEGORY_QUERY: Record<string, string> = {
   Food: 'restaurant',
   Coffee: 'coffee shop',
   Drinks: 'bar',
   Park: 'park',
 };
+
+// Google place type -> our display category (used to label results from the API)
+const GOOGLE_TYPE_TO_CATEGORY: Record<string, string> = {
+  // Food
+  restaurant: 'Food',
+  meal_takeaway: 'Food',
+  meal_delivery: 'Food',
+  bakery: 'Food',
+  fast_food_restaurant: 'Food',
+  food: 'Food',
+  // Coffee
+  cafe: 'Coffee',
+  coffee_shop: 'Coffee',
+  // Drinks
+  bar: 'Drinks',
+  night_club: 'Drinks',
+  pub: 'Drinks',
+  wine_bar: 'Drinks',
+  cocktail_bar: 'Drinks',
+  // Park
+  park: 'Park',
+  national_park: 'Park',
+  nature_reserve: 'Park',
+};
+
+/** Map a place's Google type fields to our display category.
+ *  Checks primaryType first (most specific), then the types array.
+ *  Falls back to `fallback` (the search bucket) if nothing matches. */
+function categoryFromTypes(
+  primaryType: string | undefined,
+  types: string[] | undefined,
+  fallback: string,
+): string {
+  if (primaryType) {
+    const cat = GOOGLE_TYPE_TO_CATEGORY[primaryType];
+    if (cat) return cat;
+  }
+  for (const t of types || []) {
+    const cat = GOOGLE_TYPE_TO_CATEGORY[t];
+    if (cat) return cat;
+  }
+  return fallback;
+}
 
 // Places API (New) price-level enum, indexed 0..4
 const PRICE_ENUM = [
@@ -141,6 +184,7 @@ Deno.serve(async (req) => {
     // then combine — every member's taste is represented in the pool.
     const TOURNAMENT_PER_USER = 3;
     const candidatesById = new Map<string, Candidate>();
+    const _debugResults: Record<string, unknown> = {};
 
     await Promise.all(
       located.map(async (p) => {
@@ -162,7 +206,9 @@ Deno.serve(async (req) => {
             },
             maxResultCount: 5,
           };
-          if (priceLevels.length) body.priceLevels = priceLevels;
+          // Google Places API (New) does not support PRICE_LEVEL_FREE in searchText filters.
+          const validPriceLevels = priceLevels.filter((p) => p !== 'PRICE_LEVEL_FREE');
+          if (validPriceLevels.length) body.priceLevels = validPriceLevels;
           if (minRating > 0) body.minRating = minRating;
 
           try {
@@ -177,15 +223,16 @@ Deno.serve(async (req) => {
               body: JSON.stringify(body),
             });
             const data = await res.json();
+            _debugResults[cat] = { status: res.status, ok: res.ok, placeCount: data.places?.length ?? 0, error: data.error };
             if (!res.ok) {
-              console.error(`Places API error (${res.status}):`, JSON.stringify(data));
+              console.error(`Places API error (${res.status}) cat=${cat}:`, JSON.stringify(data));
             }
             for (const place of data.places || []) {
               if (!place.id) continue;
               userPool.push({
                 place_id: place.id,
                 name: place.displayName?.text || 'Unknown venue',
-                category: cat,
+                category: cat, // will be enriched via Place Details after scoring
                 rating: place.rating || 4.0,
                 address: place.formattedAddress || '',
                 location: {
@@ -194,8 +241,8 @@ Deno.serve(async (req) => {
                 },
               });
             }
-          } catch (_e) {
-            // skip failed search
+          } catch (e) {
+            console.error(`Places fetch exception for cat=${cat}:`, e);
           }
         }
 
@@ -212,7 +259,7 @@ Deno.serve(async (req) => {
 
     const candidates = Array.from(candidatesById.values());
     if (candidates.length === 0) {
-      return json({ midpoint: center, venues: [], note: 'No candidates from Places API' });
+      return json({ midpoint: center, venues: [], note: 'No candidates from Places API', _debug: { priceLevels, minRating, center, placesResults: _debugResults } });
     }
 
     // ===== Step 2: Distance Matrix from each participant to all candidates =====
@@ -272,9 +319,38 @@ Deno.serve(async (req) => {
       .filter((x) => x.maxT / 60 <= maxTravelMin)
       .sort((a, b) => a.maxT - b.maxT || a.variance - b.variance);
 
-    // ===== Step 4: Cap to the top 5 fairest venues =====
+    // ===== Step 4: Enrich top 5 venues with Google primaryType via Place Details =====
+    // searchText FieldMask doesn't support type fields reliably; Place Details does.
     const RESULT_CAP = 5;
-    const venues = scored.slice(0, RESULT_CAP).map(({ c, travel_times }) => ({
+    const top5 = scored.slice(0, RESULT_CAP);
+
+    await Promise.all(
+      top5.map(async ({ c }) => {
+        try {
+          const res = await fetch(
+            `https://places.googleapis.com/v1/places/${c.place_id}`,
+            {
+              headers: {
+                'X-Goog-Api-Key': GOOGLE_MAPS_API_KEY as string,
+                'X-Goog-FieldMask': 'primaryType',
+              },
+            },
+          );
+          if (res.ok) {
+            const data = await res.json();
+            console.log(`Place Details ${c.place_id}: primaryType=${data.primaryType}`);
+            if (data.primaryType) {
+              c.category = categoryFromTypes(data.primaryType, undefined, c.category);
+            }
+          }
+        } catch (_e) {
+          // keep the search-bucket category as fallback
+        }
+      }),
+    );
+
+    // ===== Step 5: Build venue response =====
+    const venues = top5.map(({ c, travel_times }) => ({
       name: c.name,
       category: c.category,
       rating: c.rating,
