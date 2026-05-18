@@ -3,12 +3,32 @@ import { Plus, Loader2, Star, Clock, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MeetupRow, ParticipantRow, useReplaceVenues, useToggleVenuePoll } from '@/hooks/useMeetups';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  MeetupRow,
+  ParticipantRow,
+  useReplaceVenues,
+  useToggleVenuePoll,
+  useUpdateTransportMode,
+} from '@/hooks/useMeetups';
 import MeetupMap from '@/components/MeetupMap';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 const CATEGORY_FILTERS = ['Food', 'Drinks', 'Coffee', 'Park'] as const;
+
+const TRANSPORT_OPTIONS = [
+  { value: 'driving', label: '🚗 Driving' },
+  { value: 'walking', label: '🚶 Walking' },
+  { value: 'cycling', label: '🚲 Cycling' },
+  { value: 'transit', label: '🚌 Transit' },
+] as const;
 
 interface Props {
   meetup: MeetupRow;
@@ -18,6 +38,7 @@ interface Props {
 export default function VenuesTab({ meetup, userId }: Props) {
   const replaceVenues = useReplaceVenues();
   const togglePoll = useToggleVenuePoll();
+  const updateTransport = useUpdateTransportMode();
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [loadingVenues, setLoadingVenues] = useState(false);
   const isOrganizer = meetup.organizer_id === userId;
@@ -26,9 +47,12 @@ export default function VenuesTab({ meetup, userId }: Props) {
   const venues = meetup.venue_suggestions || [];
   const locatedParticipants = participants.filter((p) => p.location);
   const locatedCount = locatedParticipants.length;
+  const myParticipant = participants.find((p) => p.user_id === userId);
+  const myMode = myParticipant?.transport_mode || 'driving';
 
-  // Track previous located count so we re-run only when it actually changes.
+  // Refs to detect real changes vs initial mount
   const prevLocatedCountRef = useRef<number | null>(null);
+  const prevModeRef = useRef<string | null>(null);
 
   const midpoint =
     locatedCount > 0
@@ -83,22 +107,35 @@ export default function VenuesTab({ meetup, userId }: Props) {
     setLoadingVenues(false);
   };
 
+  // Trigger when a new participant sets their location
   useEffect(() => {
     const prev = prevLocatedCountRef.current;
     prevLocatedCountRef.current = locatedCount;
 
-    // Not enough participants yet
     if (locatedCount < 2) return;
-
-    // Initial mount and venues already exist — don't re-run
-    if (prev === null && venues.length > 0) return;
-
-    // Run when: first time we reach 2+, or the count grew
+    if (prev === null && venues.length > 0) return; // existing venues on mount → skip
     if (prev === null || locatedCount > prev) {
       runVenueSearch(locatedParticipants);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locatedCount]);
+
+  // Re-run when the current user changes their transport mode
+  useEffect(() => {
+    const prev = prevModeRef.current;
+    prevModeRef.current = myMode;
+
+    if (prev === null) return; // initial mount → skip
+    if (myMode === prev) return; // no real change
+    if (locatedCount >= 2) {
+      runVenueSearch(locatedParticipants);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myMode]);
+
+  const handleModeChange = (mode: string) => {
+    updateTransport.mutate({ meetupId: meetup.id, mode });
+  };
 
   return (
     <div className="space-y-4">
@@ -125,26 +162,46 @@ export default function VenuesTab({ meetup, userId }: Props) {
         </div>
       )}
 
-      {/* Category filter bar */}
-      {venues.length > 0 && !loadingVenues && (
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          <Button
-            variant={activeFilter === null ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setActiveFilter(null)}
-          >
-            All
-          </Button>
-          {CATEGORY_FILTERS.map((c) => (
-            <Button
-              key={c}
-              variant={activeFilter === c ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setActiveFilter(c)}
-            >
-              {c}
-            </Button>
-          ))}
+      {/* Transport mode selector + category filters */}
+      {locatedCount >= 2 && !loadingVenues && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <Select value={myMode} onValueChange={handleModeChange}>
+            <SelectTrigger className="w-36 h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {TRANSPORT_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {venues.length > 0 && (
+            <>
+              <div className="w-px h-5 bg-border" />
+              <Button
+                variant={activeFilter === null ? 'default' : 'outline'}
+                size="sm"
+                className="h-8"
+                onClick={() => setActiveFilter(null)}
+              >
+                All
+              </Button>
+              {CATEGORY_FILTERS.map((c) => (
+                <Button
+                  key={c}
+                  variant={activeFilter === c ? 'default' : 'outline'}
+                  size="sm"
+                  className="h-8"
+                  onClick={() => setActiveFilter(c)}
+                >
+                  {c}
+                </Button>
+              ))}
+            </>
+          )}
         </div>
       )}
 
