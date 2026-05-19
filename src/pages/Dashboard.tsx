@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Sparkles, LogOut, ChevronRight, Loader2, Settings as SettingsIcon } from 'lucide-react';
+import { Plus, Sparkles, LogOut, ChevronRight, Loader2, Settings as SettingsIcon, CalendarClock, ArrowRight } from 'lucide-react';
+import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -21,6 +22,7 @@ export default function Dashboard() {
   const [newMeetupName, setNewMeetupName] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
+  const [joinCode, setJoinCode] = useState('');
 
   const displayName = user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'User';
 
@@ -31,9 +33,25 @@ export default function Dashboard() {
       setNewMeetupName('');
       setCreateOpen(false);
       navigate(`/meetup/${meetup.id}`);
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not create meetup');
     }
+  };
+
+  const handleJoin = () => {
+    const code = joinCode.trim();
+    if (!code) return;
+    navigate(`/join/${encodeURIComponent(code)}`);
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+    } catch {
+      toast.error('Could not sign out — please try again');
+      return;
+    }
+    navigate('/');
   };
 
   const statusColor = (status: string) => {
@@ -53,7 +71,7 @@ export default function Dashboard() {
           <Button variant="ghost" size="icon" onClick={() => navigate('/settings')} aria-label="Preferences">
             <SettingsIcon className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="icon" onClick={() => { signOut(); navigate('/'); }}>
+          <Button variant="ghost" size="icon" onClick={handleSignOut} aria-label="Sign out">
             <LogOut className="w-4 h-4" />
           </Button>
         </div>
@@ -80,12 +98,24 @@ export default function Dashboard() {
           </Button>
         </div>
 
+        <div className="flex gap-2">
+          <Input
+            placeholder="Have an invite code? Paste it here"
+            value={joinCode}
+            onChange={(e) => setJoinCode(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
+          />
+          <Button variant="outline" className="gap-1.5 shrink-0" onClick={handleJoin} disabled={!joinCode.trim()}>
+            Join <ArrowRight className="w-4 h-4" />
+          </Button>
+        </div>
+
         {isLoading ? (
           <div className="text-center py-16"><Loader2 className="w-6 h-6 animate-spin mx-auto" /></div>
         ) : meetups.length === 0 ? (
           <div className="text-center py-16 text-muted-foreground">
             <p className="text-lg font-medium">No meetups yet</p>
-            <p className="text-sm mt-1">Create one or let AI suggest some ideas!</p>
+            <p className="text-sm mt-1">Create one, join with a code, or let AI suggest ideas!</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -99,9 +129,15 @@ export default function Dashboard() {
                       <h3 className="font-semibold truncate">{m.name}</h3>
                       <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                     </div>
-                    <div className="flex items-center gap-2 mb-3">
+                    <div className="flex items-center gap-2 mb-3 flex-wrap">
                       <Badge variant="secondary" className={statusColor(m.status)}>{m.status}</Badge>
                       <span className="text-xs text-muted-foreground">{total} participant{total !== 1 ? 's' : ''}</span>
+                      {m.scheduled_at && (
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <CalendarClock className="w-3 h-3" />
+                          {format(new Date(m.scheduled_at), 'EEE, MMM d · h:mm a')}
+                        </span>
+                      )}
                     </div>
                     <div className="space-y-1">
                       <div className="flex justify-between text-xs text-muted-foreground"><span>Responses</span><span>{locSet}/{total}</span></div>

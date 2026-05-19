@@ -60,7 +60,20 @@ Deno.serve(async (req) => {
       participants: Participant[];
       preferences?: Preferences;
     };
-    const located = (participants || []).filter((p) => p?.location);
+
+    if (!Array.isArray(participants)) {
+      return new Response(JSON.stringify({ error: 'participants must be an array' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const located = participants.filter(
+      (p) =>
+        p?.location &&
+        typeof p.location.lat === 'number' &&
+        typeof p.location.lng === 'number',
+    );
 
     if (located.length === 0) {
       return new Response(JSON.stringify({ error: 'No participant locations' }), {

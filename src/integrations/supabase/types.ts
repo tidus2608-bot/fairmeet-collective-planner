@@ -99,6 +99,7 @@ export type Database = {
           invite_code: string
           name: string
           organizer_id: string
+          scheduled_at: string | null
           status: string
           updated_at: string
         }
@@ -109,6 +110,7 @@ export type Database = {
           invite_code?: string
           name: string
           organizer_id: string
+          scheduled_at?: string | null
           status?: string
           updated_at?: string
         }
@@ -119,6 +121,7 @@ export type Database = {
           invite_code?: string
           name?: string
           organizer_id?: string
+          scheduled_at?: string | null
           status?: string
           updated_at?: string
         }
@@ -355,6 +358,10 @@ export type Database = {
       is_meetup_participant: {
         Args: { _meetup_id: string; _user_id: string }
         Returns: boolean
+      }
+      join_meetup_by_code: {
+        Args: { _code: string; _name: string }
+        Returns: string
       }
     }
     Enums: {

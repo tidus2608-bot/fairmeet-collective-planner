@@ -42,13 +42,13 @@ export default function AiIdeasModal({ open, onOpenChange }: AiIdeasModalProps) 
     setLoading(false);
   };
 
-  const useIdea = async (title: string) => {
+  const handleUseIdea = async (title: string) => {
     try {
       const meetup = await createMeetup.mutateAsync(title);
       onOpenChange(false);
       navigate(`/meetup/${meetup.id}`);
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not create meetup');
     }
   };
 
@@ -81,7 +81,7 @@ export default function AiIdeasModal({ open, onOpenChange }: AiIdeasModalProps) 
                     <p className="text-sm text-muted-foreground mt-0.5">{idea.description}</p>
                   </div>
                 </div>
-                <Button size="sm" variant="secondary" className="w-full mt-3" onClick={() => useIdea(idea.title)}>
+                <Button size="sm" variant="secondary" className="w-full mt-3" onClick={() => handleUseIdea(idea.title)}>
                   Use this Idea
                 </Button>
               </CardContent>

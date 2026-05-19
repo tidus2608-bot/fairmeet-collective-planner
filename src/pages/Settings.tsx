@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Loader2, Save } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import {
   DEFAULT_PREFS,
   UserPreferences,
@@ -20,13 +22,20 @@ const PRICE_LABELS: Record<number, string> = { 0: 'Free', 1: '$', 2: '$$', 3: '$
 
 export default function Settings() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { data, isLoading } = useUserPreferences();
   const save = useSaveUserPreferences();
   const [prefs, setPrefs] = useState<UserPreferences>(DEFAULT_PREFS);
+  const [displayName, setDisplayName] = useState('');
+  const [savingProfile, setSavingProfile] = useState(false);
 
   useEffect(() => {
     if (data) setPrefs(data);
   }, [data]);
+
+  useEffect(() => {
+    if (user) setDisplayName(user.user_metadata?.display_name || user.email?.split('@')[0] || '');
+  }, [user]);
 
   const toggleCategory = (cat: string) => {
     setPrefs((p) => ({
@@ -50,9 +59,18 @@ export default function Settings() {
     try {
       await save.mutateAsync(prefs);
       toast.success('Preferences saved');
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not save preferences');
     }
+  };
+
+  const handleSaveProfile = async () => {
+    if (!displayName.trim()) { toast.error('Display name cannot be empty'); return; }
+    setSavingProfile(true);
+    const { error } = await supabase.auth.updateUser({ data: { display_name: displayName.trim() } });
+    setSavingProfile(false);
+    if (error) toast.error(error.message);
+    else toast.success('Profile updated');
   };
 
   if (isLoading) {
@@ -69,12 +87,26 @@ export default function Settings() {
         <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')}>
           <ArrowLeft className="w-4 h-4" />
         </Button>
-        <h1 className="text-lg font-semibold">Venue Preferences</h1>
+        <h1 className="text-lg font-semibold">Settings</h1>
       </header>
 
       <div className="p-4 space-y-4 max-w-lg mx-auto">
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <Label className="font-semibold flex items-center gap-1.5"><User className="w-4 h-4" /> Profile</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="display-name" className="text-sm font-normal">Display name</Label>
+              <Input id="display-name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Your name" />
+            </div>
+            <Button size="sm" className="gap-1.5" onClick={handleSaveProfile} disabled={savingProfile}>
+              {savingProfile ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+              Save profile
+            </Button>
+          </CardContent>
+        </Card>
+
         <p className="text-sm text-muted-foreground">
-          These narrow venue searches before they hit the map — fewer, better matches.
+          The preferences below narrow venue searches before they hit the map — fewer, better matches.
         </p>
 
         <Card>

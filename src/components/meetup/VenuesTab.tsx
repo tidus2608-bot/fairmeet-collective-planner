@@ -14,6 +14,7 @@ import AddVenueDialog from '@/components/meetup/AddVenueDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserPreferences, DEFAULT_PREFS } from '@/hooks/useUserPreferences';
 import { venuePhotoUrl, priceLevelLabel, venueWorstMinutes, sortByFairness } from '@/lib/venue';
+import type { Participant, TransportMode, VenueCategory } from '@/types/meetup';
 import { toast } from 'sonner';
 
 const categories = ['Food', 'Drinks', 'Coffee', 'Park'] as const;
@@ -58,14 +59,14 @@ export default function VenuesTab({ meetup, userId }: Props) {
     userName: p.user_name,
     location: p.location || undefined,
     address: p.address || undefined,
-    transportMode: p.transport_mode as any,
-    status: p.status as any,
+    transportMode: p.transport_mode as TransportMode,
+    status: p.status as Participant['status'],
   }));
 
   const mapVenues = filteredVenues.map((v) => ({
     id: v.id,
     name: v.name,
-    category: v.category as any,
+    category: v.category as VenueCategory,
     rating: Number(v.rating),
     address: v.address,
     location: v.location,

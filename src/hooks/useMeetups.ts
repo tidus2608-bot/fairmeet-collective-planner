@@ -3,13 +3,20 @@ import { supabase } from '@/integrations/supabase/client';
 import type { Json, TablesInsert } from '@/integrations/supabase/types';
 import { useAuth } from './useAuth';
 
+export interface FinalVenue {
+  name: string;
+  address: string;
+  location: { lat: number; lng: number };
+}
+
 export interface MeetupRow {
   id: string;
   name: string;
   organizer_id: string;
   status: string;
   invite_code: string;
-  final_venue: any;
+  final_venue: FinalVenue | null;
+  scheduled_at: string | null;
   created_at: string;
   participants: ParticipantRow[];
   venue_suggestions: VenueRow[];
@@ -103,7 +110,7 @@ export function useMeetupsList() {
       if (pErr) throw pErr;
       if (!parts?.length) return [];
 
-      const ids = parts.map((p: any) => p.meetup_id);
+      const ids = parts.map((p) => p.meetup_id);
       const { data, error } = await supabase
         .from('meetups')
         .select('*, participants(*), venue_suggestions(*), poll_votes(*)')
@@ -130,7 +137,7 @@ export function useMeetupDetail(meetupId: string | undefined) {
       if (error) throw error;
       // Sort chat messages
       if (data.chat_messages) {
-        (data.chat_messages as any[]).sort((a: any, b: any) =>
+        data.chat_messages.sort((a, b) =>
           new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
         );
       }
@@ -202,7 +209,7 @@ export function useUpdateParticipantLocation() {
     mutationFn: async ({ meetupId, location, address }: { meetupId: string; location: { lat: number; lng: number }; address: string }) => {
       const { error } = await supabase
         .from('participants')
-        .update({ location: location as any, address, status: 'location_set' })
+        .update({ location: location as unknown as Json, address, status: 'location_set' })
         .eq('meetup_id', meetupId)
         .eq('user_id', user!.id);
       if (error) throw error;
@@ -320,14 +327,45 @@ export function useCastVote() {
 export function useConfirmVenue() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ meetupId, venue }: { meetupId: string; venue: any }) => {
+    mutationFn: async ({ meetupId, venue }: { meetupId: string; venue: FinalVenue }) => {
       const { error } = await supabase
         .from('meetups')
-        .update({ status: 'Confirmed', final_venue: venue })
+        .update({ status: 'Confirmed', final_venue: venue as unknown as Json })
         .eq('id', meetupId);
       if (error) throw error;
     },
     onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ['meetup', v.meetupId] }),
+  });
+}
+
+export function useUpdateMeetup() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ meetupId, name, scheduledAt }: { meetupId: string; name?: string; scheduledAt?: string | null }) => {
+      const patch: { name?: string; scheduled_at?: string | null } = {};
+      if (name !== undefined) patch.name = name;
+      if (scheduledAt !== undefined) patch.scheduled_at = scheduledAt;
+      const { error } = await supabase.from('meetups').update(patch).eq('id', meetupId);
+      if (error) throw error;
+    },
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: ['meetup', v.meetupId] });
+      qc.invalidateQueries({ queryKey: ['meetups'] });
+    },
+  });
+}
+
+export function useJoinMeetup() {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (code: string) => {
+      const name = user!.user_metadata?.display_name || user!.email?.split('@')[0] || 'User';
+      const { data, error } = await supabase.rpc('join_meetup_by_code', { _code: code, _name: name });
+      if (error) throw error;
+      return data as string;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['meetups'] }),
   });
 }
 

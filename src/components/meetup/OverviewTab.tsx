@@ -1,9 +1,14 @@
-import { MapPin, Navigation, Copy, Trash2, LogOut, Check, Clock, ExternalLink } from 'lucide-react';
+import { useState } from 'react';
+import { MapPin, Navigation, Copy, Trash2, LogOut, Check, Clock, ExternalLink, CalendarClock, CalendarPlus, Save } from 'lucide-react';
+import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { MeetupRow, useUpdateParticipantLocation, useUpdateTransportMode, useDeleteMeetup, useLeaveMeetup } from '@/hooks/useMeetups';
+import { MeetupRow, useUpdateParticipantLocation, useUpdateTransportMode, useUpdateMeetup, useDeleteMeetup, useLeaveMeetup } from '@/hooks/useMeetups';
 import PlacesAutocomplete from '@/components/PlacesAutocomplete';
+import { downloadMeetupICS } from '@/lib/calendar';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 
@@ -12,14 +17,27 @@ interface Props {
   userId: string;
 }
 
+// ISO timestamp -> value for <input type="datetime-local"> (local time, no tz).
+function toLocalInput(iso: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export default function OverviewTab({ meetup, userId }: Props) {
   const updateLocation = useUpdateParticipantLocation();
   const updateTransport = useUpdateTransportMode();
+  const updateMeetup = useUpdateMeetup();
   const deleteMeetup = useDeleteMeetup();
   const leaveMeetup = useLeaveMeetup();
   const navigate = useNavigate();
   const isOrganizer = meetup.organizer_id === userId;
   const myParticipant = meetup.participants?.find((p) => p.user_id === userId);
+
+  const [name, setName] = useState(meetup.name);
+  const [scheduledInput, setScheduledInput] = useState(toLocalInput(meetup.scheduled_at));
+  const detailsDirty = name.trim() !== meetup.name || scheduledInput !== toLocalInput(meetup.scheduled_at);
 
   const handleUseCurrentLocation = () => {
     if (!navigator.geolocation) { toast.error('Geolocation not supported'); return; }
@@ -41,8 +59,66 @@ export default function OverviewTab({ meetup, userId }: Props) {
     toast.success('Invite link copied!');
   };
 
+  const handleSaveDetails = () => {
+    if (!name.trim()) { toast.error('Meetup name cannot be empty'); return; }
+    updateMeetup.mutate(
+      {
+        meetupId: meetup.id,
+        name: name.trim(),
+        scheduledAt: scheduledInput ? new Date(scheduledInput).toISOString() : null,
+      },
+      {
+        onSuccess: () => toast.success('Meetup details saved'),
+        onError: () => toast.error('Could not save details'),
+      },
+    );
+  };
+
+  const handleAddToCalendar = () => {
+    if (!meetup.scheduled_at) return;
+    downloadMeetupICS({
+      id: meetup.id,
+      title: meetup.name,
+      start: meetup.scheduled_at,
+      location: meetup.final_venue?.address,
+    });
+  };
+
   return (
     <div className="space-y-4">
+      <Card>
+        <CardHeader className="pb-3"><CardTitle className="text-base">Meetup Details</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          {isOrganizer ? (
+            <>
+              <div>
+                <Label htmlFor="meetup-name" className="text-sm font-medium mb-1.5 block">Name</Label>
+                <Input id="meetup-name" value={name} onChange={(e) => setName(e.target.value)} />
+              </div>
+              <div>
+                <Label htmlFor="meetup-when" className="text-sm font-medium mb-1.5 block">Date &amp; time</Label>
+                <Input id="meetup-when" type="datetime-local" value={scheduledInput} onChange={(e) => setScheduledInput(e.target.value)} />
+              </div>
+              <Button size="sm" className="gap-1.5" onClick={handleSaveDetails} disabled={!detailsDirty || updateMeetup.isPending}>
+                <Save className="w-3.5 h-3.5" /> Save details
+              </Button>
+            </>
+          ) : (
+            <p className="text-sm flex items-center gap-1.5 text-muted-foreground">
+              <CalendarClock className="w-4 h-4" />
+              {meetup.scheduled_at
+                ? format(new Date(meetup.scheduled_at), 'EEEE, MMM d · h:mm a')
+                : 'No date set yet'}
+            </p>
+          )}
+          {meetup.scheduled_at && (
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={handleAddToCalendar}>
+              <CalendarPlus className="w-3.5 h-3.5" /> Add to calendar
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader className="pb-3"><CardTitle className="text-base">Your Details</CardTitle></CardHeader>
         <CardContent className="space-y-3">
@@ -102,10 +178,10 @@ export default function OverviewTab({ meetup, userId }: Props) {
         <Card className="border-green-200 bg-green-50">
           <CardHeader className="pb-3"><CardTitle className="text-base text-green-800">✅ Confirmed Venue</CardTitle></CardHeader>
           <CardContent className="space-y-2">
-            <p className="font-semibold">{(meetup.final_venue as any).name}</p>
-            <p className="text-sm text-muted-foreground">{(meetup.final_venue as any).address}</p>
+            <p className="font-semibold">{meetup.final_venue.name}</p>
+            <p className="text-sm text-muted-foreground">{meetup.final_venue.address}</p>
             <Button variant="outline" size="sm" className="gap-2" asChild>
-              <a href={`https://www.google.com/maps/dir/?api=1&destination=${(meetup.final_venue as any).location?.lat},${(meetup.final_venue as any).location?.lng}`} target="_blank" rel="noopener noreferrer">
+              <a href={`https://www.google.com/maps/dir/?api=1&destination=${meetup.final_venue.location?.lat},${meetup.final_venue.location?.lng}`} target="_blank" rel="noopener noreferrer">
                 <ExternalLink className="w-3.5 h-3.5" /> Get Directions
               </a>
             </Button>
