@@ -9,6 +9,7 @@ interface AuthContext {
   signUp: (email: string, password: string, name: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
+  resetPassword: (email: string) => Promise<{ error: Error | null }>;
 }
 
 const AuthCtx = createContext<AuthContext | null>(null);
@@ -52,8 +53,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   };
 
+  const resetPassword = async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    return { error: error as Error | null };
+  };
+
   return (
-    <AuthCtx.Provider value={{ user, session, loading, signUp, signIn, signOut }}>
+    <AuthCtx.Provider value={{ user, session, loading, signUp, signIn, signOut, resetPassword }}>
       {children}
     </AuthCtx.Provider>
   );

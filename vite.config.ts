@@ -19,4 +19,16 @@ export default defineConfig(({ mode }) => ({
     },
     dedupe: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime", "@tanstack/react-query", "@tanstack/query-core"],
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          "react-vendor": ["react", "react-dom", "react-router-dom"],
+          "google-maps": ["@react-google-maps/api"],
+          supabase: ["@supabase/supabase-js"],
+          "query-vendor": ["@tanstack/react-query"],
+        },
+      },
+    },
+  },
 }));
