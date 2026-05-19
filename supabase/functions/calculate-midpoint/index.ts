@@ -48,6 +48,8 @@ interface Candidate {
   rating: number;
   address: string;
   location: { lat: number; lng: number };
+  photo_reference: string | null;
+  price_level: number | null;
 }
 
 Deno.serve(async (req) => {
@@ -117,6 +119,8 @@ Deno.serve(async (req) => {
                   lat: place.geometry.location.lat,
                   lng: place.geometry.location.lng,
                 },
+                photo_reference: place.photos?.[0]?.photo_reference ?? null,
+                price_level: typeof place.price_level === 'number' ? place.price_level : null,
               });
             }
           } catch (_e) {
@@ -198,9 +202,37 @@ Deno.serve(async (req) => {
     for (const item of scored) {
       (byCategory[item.c.category] ||= []).push(item);
     }
-    const venues = Object.values(byCategory).flatMap((arr) =>
-      arr.slice(0, PER_CATEGORY).map(({ c, travel_times, maxT }) => ({
-        id: `v-${c.place_id}`,
+    const topItems = Object.values(byCategory).flatMap((arr) => arr.slice(0, PER_CATEGORY));
+
+    // ===== Step 4b: Place Details pass for the trimmed set (website, phone, hours) =====
+    const detailsById: Record<string, { website: string | null; phone: string | null; opening_hours: unknown }> = {};
+    await Promise.all(
+      topItems.map(async ({ c }) => {
+        const url =
+          `https://maps.googleapis.com/maps/api/place/details/json` +
+          `?place_id=${c.place_id}` +
+          `&fields=website,formatted_phone_number,opening_hours` +
+          `&key=${GOOGLE_MAPS_API_KEY}`;
+        try {
+          const res = await fetch(url);
+          const data = await res.json();
+          const r = data.result || {};
+          detailsById[c.place_id] = {
+            website: r.website ?? null,
+            phone: r.formatted_phone_number ?? null,
+            opening_hours: r.opening_hours
+              ? { open_now: r.opening_hours.open_now, weekday_text: r.opening_hours.weekday_text }
+              : null,
+          };
+        } catch (_e) {
+          // skip failed details lookup
+        }
+      })
+    );
+
+    const venues = topItems.map(({ c, travel_times, maxT }) => {
+      const details = detailsById[c.place_id];
+      return {
         name: c.name,
         category: c.category,
         rating: c.rating,
@@ -210,8 +242,14 @@ Deno.serve(async (req) => {
         ai_theme: null,
         in_poll: false,
         worst_minutes: Math.round(maxT / 60),
-      }))
-    );
+        photo_reference: c.photo_reference,
+        price_level: c.price_level,
+        google_place_id: c.place_id,
+        website: details?.website ?? null,
+        phone: details?.phone ?? null,
+        opening_hours: details?.opening_hours ?? null,
+      };
+    });
 
     // Reference midpoint just for map centering / circle (not used for selection)
     const midpoint = {

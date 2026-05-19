@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import type { Json, TablesInsert } from '@/integrations/supabase/types';
 import { useAuth } from './useAuth';
 
 export interface MeetupRow {
@@ -28,6 +29,11 @@ export interface ParticipantRow {
   status: string;
 }
 
+export interface VenueOpeningHours {
+  open_now?: boolean;
+  weekday_text?: string[];
+}
+
 export interface VenueRow {
   id: string;
   meetup_id: string;
@@ -39,13 +45,38 @@ export interface VenueRow {
   travel_times: Record<string, number> | null;
   ai_theme: string | null;
   in_poll: boolean;
+  photo_reference: string | null;
+  price_level: number | null;
+  website: string | null;
+  phone: string | null;
+  opening_hours: VenueOpeningHours | null;
+  google_place_id: string | null;
+  worst_minutes: number | null;
+  added_by: string | null;
 }
+
+// Fields accepted when inserting a venue suggestion (anything not a DB column is dropped).
+export type NewVenue = Partial<Omit<VenueRow, 'id' | 'meetup_id'>> & {
+  name: string;
+  category: string;
+  address: string;
+  location: { lat: number; lng: number };
+};
 
 export interface PollVoteRow {
   id: string;
   meetup_id: string;
   venue_id: string;
   user_id: string;
+}
+
+export interface MessageReactionRow {
+  id: string;
+  message_id: string;
+  meetup_id: string;
+  user_id: string;
+  emoji: string;
+  created_at: string;
 }
 
 export interface ChatMessageRow {
@@ -55,6 +86,7 @@ export interface ChatMessageRow {
   user_name: string;
   content: string;
   created_at: string;
+  message_reactions?: MessageReactionRow[];
 }
 
 // Fetch all meetups for current user (where they are a participant)
@@ -92,7 +124,7 @@ export function useMeetupDetail(meetupId: string | undefined) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('meetups')
-        .select('*, participants(*), venue_suggestions(*), poll_votes(*), chat_messages(*)')
+        .select('*, participants(*), venue_suggestions(*), poll_votes(*), chat_messages(*, message_reactions(*))')
         .eq('id', meetupId!)
         .single();
       if (error) throw error;
@@ -198,9 +230,48 @@ export function useUpdateTransportMode() {
 export function useAddVenues() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ meetupId, venues }: { meetupId: string; venues: Omit<VenueRow, 'id' | 'meetup_id'>[] }) => {
-      const rows = venues.map((v) => ({ ...v, meetup_id: meetupId, location: v.location as any }));
+    mutationFn: async ({ meetupId, venues, replace }: { meetupId: string; venues: NewVenue[]; replace?: boolean }) => {
+      // Map each incoming venue to known DB columns only. The calculate-midpoint
+      // edge function returns extra fields (id, place_id) that are not columns
+      // and would otherwise make the insert fail.
+      const rows: TablesInsert<'venue_suggestions'>[] = venues.map((v) => {
+        const row: TablesInsert<'venue_suggestions'> = {
+          meetup_id: meetupId,
+          name: v.name,
+          category: v.category,
+          address: v.address,
+          location: v.location,
+        };
+        if (v.rating !== undefined) row.rating = v.rating;
+        if (v.travel_times !== undefined) row.travel_times = v.travel_times;
+        if (v.ai_theme !== undefined) row.ai_theme = v.ai_theme;
+        if (v.in_poll !== undefined) row.in_poll = v.in_poll;
+        if (v.photo_reference !== undefined) row.photo_reference = v.photo_reference;
+        if (v.price_level !== undefined) row.price_level = v.price_level;
+        if (v.website !== undefined) row.website = v.website;
+        if (v.phone !== undefined) row.phone = v.phone;
+        if (v.opening_hours !== undefined) row.opening_hours = v.opening_hours as unknown as Json;
+        if (v.google_place_id !== undefined) row.google_place_id = v.google_place_id;
+        if (v.worst_minutes !== undefined) row.worst_minutes = v.worst_minutes;
+        if (v.added_by !== undefined) row.added_by = v.added_by;
+        return row;
+      });
+      if (replace) {
+        const { error: delErr } = await supabase.from('venue_suggestions').delete().eq('meetup_id', meetupId);
+        if (delErr) throw delErr;
+      }
       const { error } = await supabase.from('venue_suggestions').insert(rows);
+      if (error) throw error;
+    },
+    onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ['meetup', v.meetupId] }),
+  });
+}
+
+export function useDeleteVenue() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ venueId }: { venueId: string; meetupId: string }) => {
+      const { error } = await supabase.from('venue_suggestions').delete().eq('id', venueId);
       if (error) throw error;
     },
     onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ['meetup', v.meetupId] }),
@@ -284,6 +355,30 @@ export function useSendChatMessage() {
         content,
       });
       if (error) throw error;
+    },
+    onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ['meetup', v.meetupId] }),
+  });
+}
+
+export function useToggleReaction() {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ messageId, meetupId, emoji, active }: { messageId: string; meetupId: string; emoji: string; active: boolean }) => {
+      if (active) {
+        const { error } = await supabase
+          .from('message_reactions')
+          .delete()
+          .eq('message_id', messageId)
+          .eq('user_id', user!.id)
+          .eq('emoji', emoji);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('message_reactions')
+          .insert({ message_id: messageId, meetup_id: meetupId, user_id: user!.id, emoji });
+        if (error) throw error;
+      }
     },
     onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ['meetup', v.meetupId] }),
   });

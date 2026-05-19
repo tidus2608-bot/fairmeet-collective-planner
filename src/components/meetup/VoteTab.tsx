@@ -1,7 +1,8 @@
-import { Check, Crown } from 'lucide-react';
+import { Check, Crown, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { MeetupRow, useCastVote, useConfirmVenue, useSetMeetupStatus } from '@/hooks/useMeetups';
+import { venuePhotoUrl, venueWorstMinutes, sortByFairness } from '@/lib/venue';
 import { toast } from 'sonner';
 
 interface Props {
@@ -17,7 +18,7 @@ export default function VoteTab({ meetup, userId }: Props) {
   const votes = meetup.poll_votes || [];
   const myVote = votes.find((v) => v.user_id === userId);
 
-  const pollVenues = (meetup.venue_suggestions || []).filter((v) => v.in_poll);
+  const pollVenues = sortByFairness((meetup.venue_suggestions || []).filter((v) => v.in_poll));
 
   const getVoteCount = (venueId: string) => votes.filter((v) => v.venue_id === venueId).length;
   const maxVotes = Math.max(1, ...pollVenues.map((v) => getVoteCount(v.id)));
@@ -45,12 +46,25 @@ export default function VoteTab({ meetup, userId }: Props) {
           const count = getVoteCount(v.id);
           const isMyVote = myVote?.venue_id === v.id;
           const pct = (count / maxVotes) * 100;
+          const photo = venuePhotoUrl(v.photo_reference);
+          const worst = venueWorstMinutes(v);
           return (
             <Card key={v.id} className={isMyVote ? 'border-primary' : ''}>
-              <CardContent className="p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-semibold">{v.name}</h4>
-                  <span className="text-sm font-medium">{count} vote{count !== 1 ? 's' : ''}</span>
+              <CardContent className="p-0">
+                {photo && (
+                  <img src={photo} alt={v.name} className="w-full h-28 object-cover rounded-t-lg" loading="lazy" />
+                )}
+                <div className="p-4 space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <h4 className="font-semibold truncate">{v.name}</h4>
+                    {worst != null && (
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Clock className="w-3 h-3" /> Worst trip {worst}m
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-sm font-medium whitespace-nowrap">{count} vote{count !== 1 ? 's' : ''}</span>
                 </div>
                 <div className="w-full bg-muted rounded-full h-3 overflow-hidden">
                   <div className="bg-primary h-full rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
@@ -64,6 +78,7 @@ export default function VoteTab({ meetup, userId }: Props) {
                       <Crown className="w-3.5 h-3.5" /> Confirm
                     </Button>
                   )}
+                </div>
                 </div>
               </CardContent>
             </Card>
