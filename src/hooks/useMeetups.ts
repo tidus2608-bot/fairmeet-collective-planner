@@ -384,8 +384,8 @@ export function useSendChatMessage() {
   const { user } = useAuth();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ meetupId, content }: { meetupId: string; content: string }) => {
-      const displayName = user!.user_metadata?.display_name || user!.email?.split('@')[0] || 'User';
+    mutationFn: async ({ meetupId, content, userName }: { meetupId: string; content: string; userName?: string }) => {
+      const displayName = userName || user!.user_metadata?.display_name || user!.email?.split('@')[0] || 'User';
       const { error } = await supabase.from('chat_messages').insert({
         meetup_id: meetupId,
         user_id: user!.id,
