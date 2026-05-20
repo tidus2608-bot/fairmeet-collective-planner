@@ -49,6 +49,48 @@ export type Database = {
           },
         ]
       }
+      message_reactions: {
+        Row: {
+          created_at: string
+          emoji: string
+          id: string
+          meetup_id: string
+          message_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          emoji: string
+          id?: string
+          meetup_id: string
+          message_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          emoji?: string
+          id?: string
+          meetup_id?: string
+          message_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_reactions_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "chat_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_reactions_meetup_id_fkey"
+            columns: ["meetup_id"]
+            isOneToOne: false
+            referencedRelation: "meetups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       meetups: {
         Row: {
           created_at: string
@@ -57,6 +99,7 @@ export type Database = {
           invite_code: string
           name: string
           organizer_id: string
+          scheduled_at: string | null
           status: string
           updated_at: string
         }
@@ -67,6 +110,7 @@ export type Database = {
           invite_code?: string
           name: string
           organizer_id: string
+          scheduled_at?: string | null
           status?: string
           updated_at?: string
         }
@@ -77,6 +121,7 @@ export type Database = {
           invite_code?: string
           name?: string
           organizer_id?: string
+          scheduled_at?: string | null
           status?: string
           updated_at?: string
         }
@@ -233,43 +278,67 @@ export type Database = {
       }
       venue_suggestions: {
         Row: {
+          added_by: string | null
           address: string
           ai_theme: string | null
           category: string
           created_at: string
+          google_place_id: string | null
           id: string
           in_poll: boolean
           location: Json
           meetup_id: string
           name: string
+          opening_hours: Json | null
+          phone: string | null
+          photo_reference: string | null
+          price_level: number | null
           rating: number
           travel_times: Json | null
+          website: string | null
+          worst_minutes: number | null
         }
         Insert: {
+          added_by?: string | null
           address: string
           ai_theme?: string | null
           category?: string
           created_at?: string
+          google_place_id?: string | null
           id?: string
           in_poll?: boolean
           location: Json
           meetup_id: string
           name: string
+          opening_hours?: Json | null
+          phone?: string | null
+          photo_reference?: string | null
+          price_level?: number | null
           rating?: number
           travel_times?: Json | null
+          website?: string | null
+          worst_minutes?: number | null
         }
         Update: {
+          added_by?: string | null
           address?: string
           ai_theme?: string | null
           category?: string
           created_at?: string
+          google_place_id?: string | null
           id?: string
           in_poll?: boolean
           location?: Json
           meetup_id?: string
           name?: string
+          opening_hours?: Json | null
+          phone?: string | null
+          photo_reference?: string | null
+          price_level?: number | null
           rating?: number
           travel_times?: Json | null
+          website?: string | null
+          worst_minutes?: number | null
         }
         Relationships: [
           {
@@ -289,6 +358,10 @@ export type Database = {
       is_meetup_participant: {
         Args: { _meetup_id: string; _user_id: string }
         Returns: boolean
+      }
+      join_meetup_by_code: {
+        Args: { _code: string; _name: string }
+        Returns: string
       }
     }
     Enums: {

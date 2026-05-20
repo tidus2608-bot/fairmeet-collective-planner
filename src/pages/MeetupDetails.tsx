@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useMeetupDetail } from '@/hooks/useMeetups';
+import { useMeetupRealtime } from '@/hooks/useMeetupRealtime';
 import OverviewTab from '@/components/meetup/OverviewTab';
 import VenuesTab from '@/components/meetup/VenuesTab';
 import VoteTab from '@/components/meetup/VoteTab';
@@ -15,6 +16,7 @@ export default function MeetupDetails() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { data: meetup, isLoading } = useMeetupDetail(id);
+  useMeetupRealtime(id);
 
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin" /></div>;
