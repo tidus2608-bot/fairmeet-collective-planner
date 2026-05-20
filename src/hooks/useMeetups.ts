@@ -285,18 +285,6 @@ export function useDeleteVenue() {
   });
 }
 
-export function useSetVenueAiTheme() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ venueId, theme, meetupId }: { venueId: string; theme: string; meetupId: string }) => {
-      const { error } = await supabase.from('venue_suggestions').update({ ai_theme: theme }).eq('id', venueId);
-      if (error) throw error;
-      return meetupId;
-    },
-    onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ['meetup', v.meetupId] }),
-  });
-}
-
 export function useToggleVenuePoll() {
   const qc = useQueryClient();
   return useMutation({
