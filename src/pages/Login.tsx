@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
-import { lovable } from '@/integrations/lovable/index';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { PENDING_JOIN_KEY } from '@/pages/JoinMeetup';
@@ -15,7 +14,7 @@ function postAuthDestination(): string {
 }
 
 export default function Login() {
-  const { user, signIn, signUp, resetPassword } = useAuth();
+  const { user, signIn, signUp, resetPassword, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
@@ -51,11 +50,8 @@ export default function Login() {
   };
 
   const handleGoogle = async () => {
-    const result = await lovable.auth.signInWithOAuth('google', { redirect_uri: window.location.origin });
-    if (result.error) {
-      const msg = result.error instanceof Error ? result.error.message : 'Google sign-in failed';
-      toast.error(msg);
-    }
+    const { error } = await signInWithGoogle();
+    if (error) toast.error(error.message);
   };
 
   return (

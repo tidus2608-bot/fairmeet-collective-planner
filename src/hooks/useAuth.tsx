@@ -8,6 +8,7 @@ interface AuthContext {
   loading: boolean;
   signUp: (email: string, password: string, name: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signInWithGoogle: () => Promise<{ error: Error | null }>;
   signInAsGuest: (name: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: Error | null }>;
@@ -50,6 +51,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error as Error | null };
   };
 
+  const signInWithGoogle = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin },
+    });
+    return { error: error as Error | null };
+  };
+
   // Guests join without an account: an anonymous session gives them a real
   // auth.uid() so every existing RLS policy keeps working unchanged.
   const signInAsGuest = async (name: string) => {
@@ -71,7 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthCtx.Provider value={{ user, session, loading, signUp, signIn, signInAsGuest, signOut, resetPassword }}>
+    <AuthCtx.Provider value={{ user, session, loading, signUp, signIn, signInWithGoogle, signInAsGuest, signOut, resetPassword }}>
       {children}
     </AuthCtx.Provider>
   );

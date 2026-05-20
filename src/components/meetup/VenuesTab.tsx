@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Sparkles, Plus, Loader2, MapPin, Star, Clock, Trash2, RefreshCw, Globe, Phone, Award } from 'lucide-react';
+import { Plus, Loader2, MapPin, Star, Clock, Trash2, RefreshCw, Globe, Phone, Award } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -8,7 +8,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { MeetupRow, VenueRow, useAddVenues, useSetVenueAiTheme, useToggleVenuePoll, useDeleteVenue } from '@/hooks/useMeetups';
+import { MeetupRow, VenueRow, useAddVenues, useToggleVenuePoll, useDeleteVenue } from '@/hooks/useMeetups';
 import MeetupMap from '@/components/MeetupMap';
 import AddVenueDialog from '@/components/meetup/AddVenueDialog';
 import { supabase } from '@/integrations/supabase/client';
@@ -26,13 +26,11 @@ interface Props {
 
 export default function VenuesTab({ meetup, userId }: Props) {
   const addVenues = useAddVenues();
-  const setAiTheme = useSetVenueAiTheme();
   const togglePoll = useToggleVenuePoll();
   const deleteVenue = useDeleteVenue();
   const { data: prefs } = useUserPreferences();
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [loadingVenues, setLoadingVenues] = useState(false);
-  const [brainstormingId, setBrainstormingId] = useState<string | null>(null);
   const [confirmRefresh, setConfirmRefresh] = useState(false);
   const isOrganizer = meetup.organizer_id === userId;
 
@@ -103,20 +101,6 @@ export default function VenuesTab({ meetup, userId }: Props) {
     } finally {
       setLoadingVenues(false);
     }
-  };
-
-  const handleBrainstorm = async (venue: VenueRow) => {
-    setBrainstormingId(venue.id);
-    try {
-      const { data, error } = await supabase.functions.invoke('brainstorm-theme', {
-        body: { venueName: venue.name, category: venue.category },
-      });
-      if (error) throw error;
-      setAiTheme.mutate({ venueId: venue.id, theme: data.theme, meetupId: meetup.id });
-    } catch {
-      setAiTheme.mutate({ venueId: venue.id, theme: `Try a fun "${venue.category.toLowerCase()} challenge" at ${venue.name}!`, meetupId: meetup.id });
-    }
-    setBrainstormingId(null);
   };
 
   const handleDelete = (venue: VenueRow) => {
@@ -275,10 +259,6 @@ export default function VenuesTab({ meetup, userId }: Props) {
                   )}
 
                   <div className="flex gap-2 flex-wrap">
-                    <Button variant="outline" size="sm" className="gap-1.5" onClick={() => handleBrainstorm(v)} disabled={brainstormingId === v.id}>
-                      {brainstormingId === v.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-                      Brainstorm Theme
-                    </Button>
                     {isOrganizer && !v.in_poll && (
                       <Button size="sm" variant="secondary" className="gap-1.5" onClick={() => togglePoll.mutate({ venueId: v.id, inPoll: true, meetupId: meetup.id })}>
                         <Plus className="w-3.5 h-3.5" /> Add to Vote
