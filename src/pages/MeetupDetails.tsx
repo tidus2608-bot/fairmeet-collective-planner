@@ -58,7 +58,7 @@ export default function MeetupDetails() {
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-10 bg-card border-b px-4 py-3">
-        <div className="flex items-center gap-3 max-w-lg mx-auto">
+        <div className="flex items-center gap-3 mx-auto w-full max-w-lg md:max-w-3xl">
           <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
@@ -69,9 +69,10 @@ export default function MeetupDetails() {
         </div>
       </header>
 
-      <div className="max-w-lg mx-auto">
+      <div className="mx-auto w-full max-w-lg md:max-w-3xl">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="w-full grid grid-cols-4 mx-4 mt-3" style={{ width: 'calc(100% - 2rem)' }}>
+          <div className="px-4 pt-3">
+            <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="venues">Venues</TabsTrigger>
             <TabsTrigger value="vote">Vote</TabsTrigger>
@@ -83,7 +84,8 @@ export default function MeetupDetails() {
                 </span>
               )}
             </TabsTrigger>
-          </TabsList>
+            </TabsList>
+          </div>
           <TabsContent value="overview" className="p-4">
             <OverviewTab meetup={meetup} userId={user.id} />
           </TabsContent>

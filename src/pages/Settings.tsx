@@ -83,14 +83,16 @@ export default function Settings() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-10 bg-card border-b px-4 py-3 flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')}>
-          <ArrowLeft className="w-4 h-4" />
-        </Button>
-        <h1 className="text-lg font-semibold">Settings</h1>
+      <header className="sticky top-0 z-10 bg-card border-b">
+        <div className="mx-auto flex w-full max-w-lg items-center gap-3 px-4 py-3 sm:px-6 md:max-w-2xl">
+          <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')}>
+            <ArrowLeft className="w-4 h-4" />
+          </Button>
+          <h1 className="text-lg font-semibold">Settings</h1>
+        </div>
       </header>
 
-      <div className="p-4 space-y-4 max-w-lg mx-auto">
+      <div className="mx-auto w-full max-w-lg space-y-4 px-4 py-4 sm:px-6 md:max-w-2xl">
         <Card>
           <CardContent className="p-4 space-y-3">
             <Label className="font-semibold flex items-center gap-1.5"><User className="w-4 h-4" /> Profile</Label>
