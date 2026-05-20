@@ -5,12 +5,12 @@ const corsHeaders = {
 
 const GOOGLE_MAPS_API_KEY = Deno.env.get('GOOGLE_MAPS_API_KEY');
 
-// Map our transport mode to Google Distance Matrix mode
+// Map our transport mode to Google Routes API travelMode
 const MODE_MAP: Record<string, string> = {
-  driving: 'driving',
-  walking: 'walking',
-  cycling: 'bicycling',
-  transit: 'transit',
+  driving: 'DRIVE',
+  walking: 'WALK',
+  cycling: 'BICYCLE',
+  transit: 'TRANSIT',
 };
 
 // Google Places type -> our category
@@ -18,14 +18,19 @@ const TYPE_TO_CATEGORY: Record<string, string> = {
   restaurant: 'Food',
   cafe: 'Coffee',
   bar: 'Drinks',
-  park: 'Park',
 };
 const CATEGORY_TO_TYPE: Record<string, string> = {
   Food: 'restaurant',
   Coffee: 'cafe',
   Drinks: 'bar',
-  Park: 'park',
 };
+
+// Fairness scoring weights (lower score = better). Equal travel time across the
+// group dominates; rating / average / worst-case act as minor refinements.
+const W_FAIR = 0.6;   // spread of travel times (everyone the same time)
+const W_RATING = 0.15; // venue quality
+const W_AVG = 0.15;   // average travel time
+const W_WORST = 0.1;  // worst single trip
 
 interface Preferences {
   categories?: string[];
@@ -56,9 +61,10 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    const { participants, preferences } = (await req.json()) as {
+    const { participants, preferences, departureTime: rawDeparture } = (await req.json()) as {
       participants: Participant[];
       preferences?: Preferences;
+      departureTime?: string;
     };
 
     if (!Array.isArray(participants)) {
@@ -101,6 +107,13 @@ Deno.serve(async (req) => {
     const minprice = Math.min(...priceLevels);
     const maxprice = Math.max(...priceLevels);
 
+    // Optional departure time for traffic-aware estimates; must be in the future.
+    let departureTime: string | undefined;
+    if (rawDeparture) {
+      const t = new Date(rawDeparture).getTime();
+      if (Number.isFinite(t) && t > Date.now()) departureTime = new Date(t).toISOString();
+    }
+
     // ===== Step 1: Generate candidate venues by searching outward from EACH participant =====
     const SEARCH_RADIUS_M = 2500;
     const candidatesById = new Map<string, Candidate>();
@@ -118,7 +131,7 @@ Deno.serve(async (req) => {
           try {
             const res = await fetch(url);
             const data = await res.json();
-            for (const place of (data.results || []).slice(0, 8)) {
+            for (const place of (data.results || []).slice(0, 20)) {
               if (!place.place_id || candidatesById.has(place.place_id)) continue;
               const rating = place.rating || 0;
               if (rating < minRating) continue;
@@ -150,36 +163,58 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ===== Step 2: Distance Matrix from each participant to all candidates =====
-    // One request per participant (origin), all candidates as destinations.
-    // Distance Matrix supports up to 25 destinations per request — chunk if needed.
-    const DEST_CHUNK = 25;
+    // ===== Step 2: Travel times via Routes API computeRouteMatrix =====
+    // One request per participant (single origin), all candidates as destinations.
+    // computeRouteMatrix allows up to 625 elements (origins×destinations) per
+    // request; with one origin we chunk destinations defensively at 600.
+    const DEST_CHUNK = 600;
     // travelMatrix[userId][place_id] = seconds
     const travelMatrix: Record<string, Record<string, number>> = {};
 
     await Promise.all(
       located.map(async (p) => {
         travelMatrix[p.user_id] = {};
-        const mode = MODE_MAP[p.transport_mode || 'driving'] || 'driving';
+        const travelMode = MODE_MAP[p.transport_mode || 'driving'] || 'DRIVE';
+        const origins = [{
+          waypoint: { location: { latLng: { latitude: p.location.lat, longitude: p.location.lng } } },
+        }];
 
         for (let i = 0; i < candidates.length; i += DEST_CHUNK) {
           const chunk = candidates.slice(i, i + DEST_CHUNK);
-          const dests = chunk.map((c) => `${c.location.lat},${c.location.lng}`).join('|');
-          const url =
-            `https://maps.googleapis.com/maps/api/distancematrix/json` +
-            `?origins=${p.location.lat},${p.location.lng}` +
-            `&destinations=${encodeURIComponent(dests)}` +
-            `&mode=${mode}&key=${GOOGLE_MAPS_API_KEY}`;
+          const destinations = chunk.map((c) => ({
+            waypoint: { location: { latLng: { latitude: c.location.lat, longitude: c.location.lng } } },
+          }));
+          const body: Record<string, unknown> = { origins, destinations, travelMode };
+          // Traffic-aware routing is valid only for driving; otherwise it is rejected.
+          if (travelMode === 'DRIVE') {
+            body.routingPreference = 'TRAFFIC_AWARE';
+            if (departureTime) body.departureTime = departureTime;
+          } else if (travelMode === 'TRANSIT' && departureTime) {
+            body.departureTime = departureTime;
+          }
           try {
-            const res = await fetch(url);
+            const res = await fetch(
+              'https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix',
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'X-Goog-Api-Key': GOOGLE_MAPS_API_KEY,
+                  'X-Goog-FieldMask': 'originIndex,destinationIndex,duration,condition',
+                },
+                body: JSON.stringify(body),
+              },
+            );
             const data = await res.json();
-            const elements = data.rows?.[0]?.elements || [];
-            chunk.forEach((c, idx) => {
-              const el = elements[idx];
-              if (el?.status === 'OK' && el.duration?.value != null) {
-                travelMatrix[p.user_id][c.place_id] = el.duration.value;
+            // Response is a flat array of { originIndex, destinationIndex, duration, condition }.
+            for (const el of Array.isArray(data) ? data : []) {
+              if (el?.condition !== 'ROUTE_EXISTS' || typeof el.duration !== 'string') continue;
+              const seconds = Math.round(parseFloat(el.duration));
+              const c = chunk[el.destinationIndex];
+              if (c && Number.isFinite(seconds)) {
+                travelMatrix[p.user_id][c.place_id] = seconds;
               }
-            });
+            }
           } catch (_e) {
             // skip failed chunk
           }
@@ -187,10 +222,10 @@ Deno.serve(async (req) => {
       })
     );
 
-    // ===== Step 3: Score each candidate by fairness =====
-    // Primary: minimize the WORST (max) travel time across the group.
-    // Tiebreaker: minimize variance (everyone roughly equal).
-    const scored = candidates
+    // ===== Step 3: Score each candidate (composite, equal-time dominant) =====
+    // Fairness = everyone gets the same travel time (minimize spread). Average and
+    // worst-case travel and venue rating act as minor refinements.
+    const metrics = candidates
       .map((c) => {
         const times: number[] = [];
         const travel_times: Record<string, number> = {};
@@ -201,16 +236,41 @@ Deno.serve(async (req) => {
           travel_times[p.user_id] = Math.round(t / 60); // store minutes
         }
         const maxT = Math.max(...times);
+        const minT = Math.min(...times);
         const meanT = times.reduce((s, v) => s + v, 0) / times.length;
-        const variance = times.reduce((s, v) => s + (v - meanT) ** 2, 0) / times.length;
-        return { c, maxT, variance, travel_times };
+        const spread = maxT - minT; // equal travel time for everyone
+        return { c, maxT, meanT, spread, rating: c.rating, travel_times };
       })
       .filter((x): x is NonNullable<typeof x> => x !== null)
-      .filter((x) => x.maxT / 60 <= maxTravelMin)
-      .sort((a, b) => a.maxT - b.maxT || a.variance - b.variance);
+      .filter((x) => x.maxT / 60 <= maxTravelMin);
+
+    // Normalize each metric to 0..1 across the candidate set, then combine.
+    const range = (vals: number[]) => {
+      const lo = Math.min(...vals);
+      const hi = Math.max(...vals);
+      return { lo, span: hi - lo };
+    };
+    const norm = (v: number, r: { lo: number; span: number }) =>
+      r.span > 0 ? (v - r.lo) / r.span : 0;
+
+    const spreadR = range(metrics.map((m) => m.spread));
+    const meanR = range(metrics.map((m) => m.meanT));
+    const maxR = range(metrics.map((m) => m.maxT));
+    const ratingR = range(metrics.map((m) => m.rating));
+
+    const scored = metrics
+      .map((m) => ({
+        ...m,
+        score:
+          W_FAIR * norm(m.spread, spreadR) +
+          W_AVG * norm(m.meanT, meanR) +
+          W_WORST * norm(m.maxT, maxR) +
+          W_RATING * (1 - norm(m.rating, ratingR)),
+      }))
+      .sort((a, b) => a.score - b.score);
 
     // ===== Step 4: Take top venues, balanced across categories =====
-    const PER_CATEGORY = 3;
+    const PER_CATEGORY = 5;
     const byCategory: Record<string, typeof scored> = {};
     for (const item of scored) {
       (byCategory[item.c.category] ||= []).push(item);
