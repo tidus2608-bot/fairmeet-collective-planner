@@ -359,9 +359,13 @@ export function useJoinMeetup() {
   const { user } = useAuth();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (code: string) => {
-      const name = user!.user_metadata?.display_name || user!.email?.split('@')[0] || 'User';
-      const { data, error } = await supabase.rpc('join_meetup_by_code', { _code: code, _name: name });
+    mutationFn: async ({ code, name }: { code: string; name?: string }) => {
+      // Prefer the explicitly supplied name (a guest who just signed in
+      // anonymously may not have a refreshed auth context yet); otherwise
+      // derive it from the current session.
+      const finalName =
+        name?.trim() || user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'Guest';
+      const { data, error } = await supabase.rpc('join_meetup_by_code', { _code: code, _name: finalName });
       if (error) throw error;
       return data as string;
     },
