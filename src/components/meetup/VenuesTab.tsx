@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Loader2, MapPin, Star, Clock, Trash2, RefreshCw, Globe, Phone, Award } from 'lucide-react';
+import { Plus, Loader2, MapPin, Star, Clock, Trash2, RefreshCw, Globe, Phone, Award, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -13,11 +13,11 @@ import MeetupMap from '@/components/MeetupMap';
 import AddVenueDialog from '@/components/meetup/AddVenueDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserPreferences, DEFAULT_PREFS } from '@/hooks/useUserPreferences';
-import { venuePhotoUrl, priceLevelLabel, venueWorstMinutes, sortByFairness } from '@/lib/venue';
+import { venuePhotoUrl, priceLevelLabel, venueWorstMinutes, venueTravelSpread, sortByFairness } from '@/lib/venue';
 import type { Participant, TransportMode, VenueCategory } from '@/types/meetup';
 import { toast } from 'sonner';
 
-const categories = ['Food', 'Drinks', 'Coffee', 'Park'] as const;
+const categories = ['Food', 'Drinks', 'Coffee'] as const;
 
 interface Props {
   meetup: MeetupRow;
@@ -48,7 +48,7 @@ export default function VenuesTab({ meetup, userId }: Props) {
   })();
 
   const sortedVenues = sortByFairness(venues);
-  const fairestId = sortedVenues.find((v) => venueWorstMinutes(v) != null)?.id;
+  const fairestId = sortedVenues.find((v) => venueTravelSpread(v) != null)?.id;
   const filteredVenues = activeFilter ? sortedVenues.filter((v) => v.category === activeFilter) : sortedVenues;
 
   const mapParticipants = participants.map((p) => ({
@@ -80,10 +80,15 @@ export default function VenuesTab({ meetup, userId }: Props) {
     }
     setLoadingVenues(true);
     try {
+      const departureTime =
+        meetup.scheduled_at && new Date(meetup.scheduled_at).getTime() > Date.now()
+          ? meetup.scheduled_at
+          : undefined;
       const { data, error } = await supabase.functions.invoke('calculate-midpoint', {
         body: {
           participants: locatedParticipants,
           preferences: prefs ?? DEFAULT_PREFS,
+          departureTime,
         },
       });
       if (error) throw error;
@@ -93,8 +98,24 @@ export default function VenuesTab({ meetup, userId }: Props) {
         toast.warning('No venues matched — try widening your preferences in Settings.');
         return;
       }
-      await addVenues.mutateAsync({ meetupId: meetup.id, venues: found, replace });
-      toast.success(`Found ${found.length} fair venue${found.length === 1 ? '' : 's'}!`);
+      // On append, skip venues already in the list so we don't pile up duplicates.
+      let toAdd = found;
+      if (!replace) {
+        const existing = new Set(
+          venues.map((v) => v.google_place_id).filter(Boolean) as string[],
+        );
+        toAdd = found.filter((v) => !v.google_place_id || !existing.has(v.google_place_id));
+        if (!toAdd.length) {
+          toast.info('No new venues found — try widening your preferences in Settings.');
+          return;
+        }
+      }
+      await addVenues.mutateAsync({ meetupId: meetup.id, venues: toAdd, replace });
+      toast.success(
+        replace
+          ? `Found ${toAdd.length} fair venue${toAdd.length === 1 ? '' : 's'}!`
+          : `Added ${toAdd.length} new venue${toAdd.length === 1 ? '' : 's'}!`,
+      );
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Could not reach the venue search service';
       toast.error(`Venue search failed: ${msg}`);
@@ -146,6 +167,10 @@ export default function VenuesTab({ meetup, userId }: Props) {
               <Button key={c} variant={activeFilter === c ? 'default' : 'outline'} size="sm" onClick={() => setActiveFilter(c)}>{c}</Button>
             ))}
           </div>
+          <Button variant="secondary" size="sm" className="gap-1.5" onClick={() => discoverVenues(false)} disabled={loadingVenues}>
+            {loadingVenues ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+            Get suggestions
+          </Button>
           {isOrganizer && (
             <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setConfirmRefresh(true)} disabled={loadingVenues}>
               {loadingVenues ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}

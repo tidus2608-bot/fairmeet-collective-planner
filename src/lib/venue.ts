@@ -23,15 +23,22 @@ export function venueWorstMinutes(v: VenueRow): number | null {
   return times.length ? Math.max(...times) : null;
 }
 
-// Sort venues fairest-first (lowest worst-case travel time). Venues without
-// travel data sort to the end.
+// Spread of travel times across participants, in minutes (max - min). Lower is
+// fairer: everyone gets roughly the same travel time. Null without travel data.
+export function venueTravelSpread(v: VenueRow): number | null {
+  const times = v.travel_times ? Object.values(v.travel_times) : [];
+  return times.length ? Math.max(...times) - Math.min(...times) : null;
+}
+
+// Sort venues fairest-first (smallest spread of travel times, i.e. everyone the
+// same time). Venues without travel data sort to the end.
 export function sortByFairness(venues: VenueRow[]): VenueRow[] {
   return [...venues].sort((a, b) => {
-    const wa = venueWorstMinutes(a);
-    const wb = venueWorstMinutes(b);
-    if (wa == null && wb == null) return 0;
-    if (wa == null) return 1;
-    if (wb == null) return -1;
-    return wa - wb;
+    const sa = venueTravelSpread(a);
+    const sb = venueTravelSpread(b);
+    if (sa == null && sb == null) return 0;
+    if (sa == null) return 1;
+    if (sb == null) return -1;
+    return sa - sb;
   });
 }

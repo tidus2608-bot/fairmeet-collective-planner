@@ -11,7 +11,7 @@ import PlacesAutocomplete from '@/components/PlacesAutocomplete';
 import { useAddVenues } from '@/hooks/useMeetups';
 import { toast } from 'sonner';
 
-const categories = ['Food', 'Drinks', 'Coffee', 'Park'] as const;
+const categories = ['Food', 'Drinks', 'Coffee'] as const;
 
 interface Props {
   meetupId: string;
