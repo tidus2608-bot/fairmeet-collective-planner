@@ -42,6 +42,18 @@ ship has to land on **`master`**. We are porting `main`'s useful extras onto
   tables/functions not created in those files).
 - Edge functions on `master`: `calculate-midpoint`, `suggest-ideas`,
   `brainstorm-theme` (Gemini). Secrets: `GOOGLE_MAPS_API_KEY`, `GEMINI_API_KEY`.
+- ⚠️ **Cloudflare does NOT deploy edge functions** — only the frontend (`dist/`).
+  Edge functions must be deployed separately via the Supabase MCP tool
+  (`deploy_edge_function`, project `ntdxzuochwwrdezfrwuq`) or the Supabase CLI
+  (`supabase functions deploy <slug>`). **Git source ≠ live deployed version**
+  unless you explicitly deploy. Current deployed versions: `calculate-midpoint`
+  v16 (Places API New, `places.googleapis.com/v1/places:searchText`), `suggest-ideas`
+  v3, `brainstorm-theme` v3.
+- `calculate-midpoint` requires **"Places API (New)"** enabled in Google Cloud
+  (the legacy `nearbysearch` was sunset; the function was migrated to the new API
+  in git but had never been deployed — that was the "No venues found nearby" bug
+  fixed on 2026-05-20). The API key must allow server-side calls (no HTTP-referrer
+  restriction).
 
 ## Auth
 - Native Supabase: email/password, anonymous **guest join**, Google OAuth
