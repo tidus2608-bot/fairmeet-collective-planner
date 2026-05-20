@@ -56,7 +56,7 @@ export default function ChatTab({ meetup, userId }: Props) {
   const messages = meetup.chat_messages || [];
   const participants = meetup.participants || [];
   const participantMap = new Map(participants.map((p) => [p.user_id, p]));
-  const displayName = user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'User';
+  const displayName = participantMap.get(userId)?.user_name || user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'User';
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -106,7 +106,7 @@ export default function ChatTab({ meetup, userId }: Props) {
   const doSend = (content: string, tempId: string) => {
     setPending((p) => p.map((m) => (m.tempId === tempId ? { ...m, status: 'sending' } : m)));
     sendMessage.mutate(
-      { meetupId: meetup.id, content },
+      { meetupId: meetup.id, content, userName: displayName },
       {
         onSuccess: () => setPending((p) => p.filter((m) => m.tempId !== tempId)),
         onError: () => {
@@ -143,7 +143,7 @@ export default function ChatTab({ meetup, userId }: Props) {
       kind: 'real' as const,
       id: m.id,
       authorId: m.user_id,
-      authorName: m.user_name,
+      authorName: participantMap.get(m.user_id)?.user_name || m.user_name,
       content: m.content,
       createdAt: m.created_at,
       reactions: m.message_reactions,
