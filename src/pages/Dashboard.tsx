@@ -29,8 +29,8 @@ export default function Dashboard() {
       setNewMeetupName('');
       setCreateOpen(false);
       navigate(`/meetup/${meetup.id}`);
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not create meetup');
     }
   };
 

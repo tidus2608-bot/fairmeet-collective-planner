@@ -79,8 +79,8 @@ export default function Join() {
         }
 
         setMeetup({ id: data.id, name: data.name });
-      } catch (e: any) {
-        setPageError(e.message || 'Something went wrong. Please try again.');
+      } catch (e) {
+        setPageError(e instanceof Error ? e.message : 'Something went wrong. Please try again.');
       }
       setLoading(false);
     };
@@ -138,8 +138,8 @@ export default function Join() {
         address: locationData?.address,
       });
       navigate(`/meetup/${meetupId}`);
-    } catch (e: any) {
-      toast.error(e.message || 'Could not join meetup');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not join meetup');
       setJoining(false);
     }
   };

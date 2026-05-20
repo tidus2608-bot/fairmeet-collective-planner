@@ -17,6 +17,7 @@ import {
   useToggleVenuePoll,
   useUpdateTransportMode,
 } from '@/hooks/useMeetups';
+import type { TransportMode, VenueCategory } from '@/types/meetup';
 import MeetupMap from '@/components/MeetupMap';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -72,14 +73,14 @@ export default function VenuesTab({ meetup, userId }: Props) {
     userName: p.user_name,
     location: p.location || undefined,
     address: p.address || undefined,
-    transportMode: p.transport_mode as any,
-    status: p.status as any,
+    transportMode: p.transport_mode as TransportMode,
+    status: p.status as 'awaiting' | 'location_set',
   }));
 
   const mapVenues = filteredVenues.map((v) => ({
     id: v.id,
     name: v.name,
-    category: v.category as any,
+    category: v.category as VenueCategory,
     rating: Number(v.rating),
     address: v.address,
     location: v.location,
@@ -101,8 +102,8 @@ export default function VenuesTab({ meetup, userId }: Props) {
       } else {
         toast.error(data.note || 'No venues found nearby');
       }
-    } catch (e: any) {
-      toast.error(e.message || 'Could not find venues');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not find venues');
     }
     setLoadingVenues(false);
   };
