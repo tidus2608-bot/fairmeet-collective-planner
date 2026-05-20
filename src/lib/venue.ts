@@ -3,6 +3,14 @@ import type { VenueRow } from '@/hooks/useMeetups';
 
 export function venuePhotoUrl(photoReference: string | null, maxwidth = 400): string | null {
   if (!photoReference) return null;
+  // Places API (New) returns photo resource names like "places/X/photos/Y".
+  if (photoReference.startsWith('places/')) {
+    return (
+      `https://places.googleapis.com/v1/${photoReference}/media` +
+      `?maxWidthPx=${maxwidth}&key=${GOOGLE_MAPS_API_KEY}`
+    );
+  }
+  // Legacy Places photo reference.
   return (
     `https://maps.googleapis.com/maps/api/place/photo?maxwidth=${maxwidth}` +
     `&photo_reference=${photoReference}&key=${GOOGLE_MAPS_API_KEY}`
