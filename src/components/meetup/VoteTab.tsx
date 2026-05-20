@@ -1,7 +1,7 @@
 import { Check, Crown, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { MeetupRow, useCastVote, useConfirmVenue, useSetMeetupStatus } from '@/hooks/useMeetups';
+import { FinalVenue, MeetupRow, useCastVote, useConfirmVenue, useSetMeetupStatus } from '@/hooks/useMeetups';
 import CalendarExportDialog from '@/components/meetup/CalendarExportDialog';
 import { toast } from 'sonner';
 
@@ -37,7 +37,7 @@ export default function VoteTab({ meetup, userId }: Props) {
 
   // Confirmed banner — visible to everyone once the organizer picks a winner
   if (meetup.status === 'Confirmed' && meetup.final_venue) {
-    const venue = meetup.final_venue as any;
+    const venue = meetup.final_venue as FinalVenue;
     return (
       <div className="space-y-4">
         <Card className="border-green-200 bg-green-50">

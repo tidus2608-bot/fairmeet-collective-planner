@@ -3,7 +3,7 @@ import CalendarExportDialog from '@/components/meetup/CalendarExportDialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { MeetupRow, useUpdateParticipantLocation, useUpdateTransportMode, useDeleteMeetup, useLeaveMeetup } from '@/hooks/useMeetups';
+import { FinalVenue, MeetupRow, useUpdateParticipantLocation, useUpdateTransportMode, useDeleteMeetup, useLeaveMeetup } from '@/hooks/useMeetups';
 import PlacesAutocomplete from '@/components/PlacesAutocomplete';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -99,28 +99,31 @@ export default function OverviewTab({ meetup, userId }: Props) {
         </CardContent>
       </Card>
 
-      {meetup.status === 'Confirmed' && meetup.final_venue && (
-        <Card className="border-green-200 bg-green-50">
-          <CardHeader className="pb-3"><CardTitle className="text-base text-green-800">✅ Confirmed Venue</CardTitle></CardHeader>
-          <CardContent className="space-y-2">
-            <p className="font-semibold">{(meetup.final_venue as any).name}</p>
-            <p className="text-sm text-muted-foreground">{(meetup.final_venue as any).address}</p>
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" size="sm" className="gap-2" asChild>
-                <a href={`https://www.google.com/maps/dir/?api=1&destination=${(meetup.final_venue as any).location?.lat},${(meetup.final_venue as any).location?.lng}`} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="w-3.5 h-3.5" /> Get Directions
-                </a>
-              </Button>
-              <CalendarExportDialog
-                meetupName={meetup.name}
-                meetupId={meetup.id}
-                venueName={(meetup.final_venue as any).name}
-                venueAddress={(meetup.final_venue as any).address}
-              />
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {meetup.status === 'Confirmed' && meetup.final_venue && (() => {
+        const fv = meetup.final_venue as FinalVenue;
+        return (
+          <Card className="border-green-200 bg-green-50">
+            <CardHeader className="pb-3"><CardTitle className="text-base text-green-800">✅ Confirmed Venue</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+              <p className="font-semibold">{fv.name}</p>
+              <p className="text-sm text-muted-foreground">{fv.address}</p>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" size="sm" className="gap-2" asChild>
+                  <a href={`https://www.google.com/maps/dir/?api=1&destination=${fv.location?.lat},${fv.location?.lng}`} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="w-3.5 h-3.5" /> Get Directions
+                  </a>
+                </Button>
+                <CalendarExportDialog
+                  meetupName={meetup.name}
+                  meetupId={meetup.id}
+                  venueName={fv.name}
+                  venueAddress={fv.address}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       <div className="pt-2">
         {isOrganizer ? (

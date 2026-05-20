@@ -1,6 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import type { Json } from '@/integrations/supabase/types';
 import { useAuth } from './useAuth';
+
+export interface FinalVenue {
+  name: string;
+  address: string;
+  location?: { lat: number; lng: number };
+}
 
 export interface MeetupRow {
   id: string;
@@ -8,7 +15,7 @@ export interface MeetupRow {
   organizer_id: string;
   status: string;
   invite_code: string;
-  final_venue: any;
+  final_venue: FinalVenue | null;
   created_at: string;
   participants: ParticipantRow[];
   venue_suggestions: VenueRow[];
@@ -81,7 +88,7 @@ export function useMeetupsList() {
       if (pErr) throw pErr;
       if (!parts?.length) return [];
 
-      const ids = parts.map((p: any) => p.meetup_id);
+      const ids = parts.map((p) => p.meetup_id);
       const { data, error } = await supabase
         .from('meetups')
         .select('*, participants(*), venue_suggestions(*), poll_votes(*)')
@@ -108,7 +115,7 @@ export function useMeetupDetail(meetupId: string | undefined) {
       if (error) throw error;
       // Sort chat messages
       if (data.chat_messages) {
-        (data.chat_messages as any[]).sort((a: any, b: any) =>
+        (data.chat_messages as ChatMessageRow[]).sort((a, b) =>
           new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
         );
       }
@@ -183,7 +190,7 @@ export function useUpdateParticipantLocation() {
     mutationFn: async ({ meetupId, location, address }: { meetupId: string; location: { lat: number; lng: number }; address: string }) => {
       const { error } = await supabase
         .from('participants')
-        .update({ location: location as any, address, status: 'location_set' })
+        .update({ location: location as unknown as Json, address, status: 'location_set' })
         .eq('meetup_id', meetupId)
         .eq('user_id', user!.id);
       if (error) throw error;
@@ -212,7 +219,7 @@ export function useAddVenues() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ meetupId, venues }: { meetupId: string; venues: Omit<VenueRow, 'id' | 'meetup_id'>[] }) => {
-      const rows = venues.map((v) => ({ ...v, meetup_id: meetupId, location: v.location as any }));
+      const rows = venues.map((v) => ({ ...v, meetup_id: meetupId, location: v.location as unknown as Json }));
       const { error } = await supabase.from('venue_suggestions').insert(rows);
       if (error) throw error;
     },
@@ -232,7 +239,7 @@ export function useReplaceVenues() {
         .eq('meetup_id', meetupId);
       if (delErr) throw delErr;
       if (venues.length === 0) return;
-      const rows = venues.map((v) => ({ ...v, meetup_id: meetupId, location: v.location as any }));
+      const rows = venues.map((v) => ({ ...v, meetup_id: meetupId, location: v.location as unknown as Json }));
       const { error } = await supabase.from('venue_suggestions').insert(rows);
       if (error) throw error;
     },
@@ -282,10 +289,10 @@ export function useCastVote() {
 export function useConfirmVenue() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ meetupId, venue }: { meetupId: string; venue: any }) => {
+    mutationFn: async ({ meetupId, venue }: { meetupId: string; venue: FinalVenue }) => {
       const { error } = await supabase
         .from('meetups')
-        .update({ status: 'Confirmed', final_venue: venue })
+        .update({ status: 'Confirmed', final_venue: venue as unknown as Json })
         .eq('id', meetupId);
       if (error) throw error;
     },
@@ -346,7 +353,7 @@ export function useJoinMeetup() {
           user_id: user!.id,
           user_name: userName,
           transport_mode: transportMode || 'driving',
-          ...(location && { location: location as any, address: address || '', status: 'location_set' }),
+          ...(location && { location: location as unknown as Json, address: address || '', status: 'location_set' }),
         });
       if (pErr) throw pErr;
       return meetup.id;

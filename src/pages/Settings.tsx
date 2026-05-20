@@ -50,8 +50,8 @@ export default function Settings() {
     try {
       await save.mutateAsync(prefs);
       toast.success('Preferences saved');
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not save preferences');
     }
   };
 
