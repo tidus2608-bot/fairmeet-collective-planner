@@ -160,7 +160,7 @@ export default function ChatTab({ meetup, userId }: Props) {
   ];
 
   return (
-    <div className="flex flex-col" style={{ height: 'calc(100vh - 220px)' }}>
+    <div className="flex flex-col h-[calc(100dvh-13rem)]">
       <div className="flex-1 overflow-y-auto space-y-1 pb-4">
         {items.length === 0 && (
           <div className="text-center py-16 text-muted-foreground">
@@ -197,7 +197,7 @@ export default function ChatTab({ meetup, userId }: Props) {
                     )}
                   </div>
                 )}
-                <div className={`max-w-[78%] flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                <div className={`max-w-[78%] md:max-w-[68%] flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
                   <div
                     className={`rounded-2xl px-4 py-2.5 ${
                       isMe

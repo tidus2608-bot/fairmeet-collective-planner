@@ -185,7 +185,7 @@ export default function VenuesTab({ meetup, userId }: Props) {
         </div>
       )}
 
-      <div className="space-y-3">
+      <div className="grid items-start gap-3 lg:grid-cols-2">
         {filteredVenues.map((v) => {
           const photo = venuePhotoUrl(v.photo_reference);
           const price = priceLevelLabel(v.price_level);

@@ -62,22 +62,24 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-10 bg-card border-b px-4 py-3 flex items-center justify-between">
-        <h1 className="text-xl font-bold text-primary">FairMeet</h1>
-        <div className="flex items-center gap-3">
-          <Avatar className="h-8 w-8">
-            <AvatarFallback>{displayName[0]}</AvatarFallback>
-          </Avatar>
-          <Button variant="ghost" size="icon" onClick={() => navigate('/settings')} aria-label="Preferences">
-            <SettingsIcon className="w-4 h-4" />
-          </Button>
-          <Button variant="ghost" size="icon" onClick={handleSignOut} aria-label="Sign out">
-            <LogOut className="w-4 h-4" />
-          </Button>
+      <header className="sticky top-0 z-10 bg-card border-b">
+        <div className="mx-auto flex w-full max-w-lg items-center justify-between px-4 py-3 sm:px-6 md:max-w-3xl">
+          <h1 className="text-xl font-bold text-primary">FairMeet</h1>
+          <div className="flex items-center gap-3">
+            <Avatar className="h-8 w-8">
+              <AvatarFallback>{displayName[0]}</AvatarFallback>
+            </Avatar>
+            <Button variant="ghost" size="icon" onClick={() => navigate('/settings')} aria-label="Preferences">
+              <SettingsIcon className="w-4 h-4" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={handleSignOut} aria-label="Sign out">
+              <LogOut className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
       </header>
 
-      <div className="p-4 space-y-4 max-w-lg mx-auto">
+      <div className="mx-auto w-full max-w-lg space-y-4 px-4 py-4 sm:px-6 md:max-w-3xl">
         <div className="flex gap-3">
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>
             <DialogTrigger asChild>
@@ -118,7 +120,7 @@ export default function Dashboard() {
             <p className="text-sm mt-1">Create one, join with a code, or let AI suggest ideas!</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             {meetups.map((m) => {
               const locSet = m.participants?.filter((p) => p.status === 'location_set').length || 0;
               const total = m.participants?.length || 0;

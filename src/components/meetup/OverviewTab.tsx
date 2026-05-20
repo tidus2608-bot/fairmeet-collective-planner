@@ -91,13 +91,15 @@ export default function OverviewTab({ meetup, userId }: Props) {
         <CardContent className="space-y-3">
           {isOrganizer ? (
             <>
-              <div>
-                <Label htmlFor="meetup-name" className="text-sm font-medium mb-1.5 block">Name</Label>
-                <Input id="meetup-name" value={name} onChange={(e) => setName(e.target.value)} />
-              </div>
-              <div>
-                <Label htmlFor="meetup-when" className="text-sm font-medium mb-1.5 block">Date &amp; time</Label>
-                <Input id="meetup-when" type="datetime-local" value={scheduledInput} onChange={(e) => setScheduledInput(e.target.value)} />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <Label htmlFor="meetup-name" className="text-sm font-medium mb-1.5 block">Name</Label>
+                  <Input id="meetup-name" value={name} onChange={(e) => setName(e.target.value)} />
+                </div>
+                <div>
+                  <Label htmlFor="meetup-when" className="text-sm font-medium mb-1.5 block">Date &amp; time</Label>
+                  <Input id="meetup-when" type="datetime-local" value={scheduledInput} onChange={(e) => setScheduledInput(e.target.value)} />
+                </div>
               </div>
               <Button size="sm" className="gap-1.5" onClick={handleSaveDetails} disabled={!detailsDirty || updateMeetup.isPending}>
                 <Save className="w-3.5 h-3.5" /> Save details

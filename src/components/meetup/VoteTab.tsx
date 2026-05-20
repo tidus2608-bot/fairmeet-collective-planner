@@ -41,7 +41,7 @@ export default function VoteTab({ meetup, userId }: Props) {
         <Button className="w-full" onClick={() => setStatus.mutate({ meetupId: meetup.id, status: 'Voting' })}>Start Voting Phase</Button>
       )}
 
-      <div className="space-y-3">
+      <div className="grid items-start gap-3 lg:grid-cols-2">
         {pollVenues.map((v) => {
           const count = getVoteCount(v.id);
           const isMyVote = myVote?.venue_id === v.id;
