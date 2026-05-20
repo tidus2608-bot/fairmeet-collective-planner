@@ -48,6 +48,15 @@ export interface PollVoteRow {
   user_id: string;
 }
 
+export interface MessageReactionRow {
+  id: string;
+  message_id: string;
+  meetup_id: string;
+  user_id: string;
+  emoji: string;
+  created_at: string;
+}
+
 export interface ChatMessageRow {
   id: string;
   meetup_id: string;
@@ -55,6 +64,7 @@ export interface ChatMessageRow {
   user_name: string;
   content: string;
   created_at: string;
+  message_reactions?: MessageReactionRow[];
 }
 
 // Fetch all meetups for current user (where they are a participant)
@@ -92,7 +102,7 @@ export function useMeetupDetail(meetupId: string | undefined) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('meetups')
-        .select('*, participants(*), venue_suggestions(*), poll_votes(*), chat_messages(*)')
+        .select('*, participants(*), venue_suggestions(*), poll_votes(*), chat_messages(*, message_reactions(*))')
         .eq('id', meetupId!)
         .single();
       if (error) throw error;
@@ -342,6 +352,30 @@ export function useJoinMeetup() {
       return meetup.id;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['meetups'] }),
+  });
+}
+
+export function useToggleReaction() {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ messageId, meetupId, emoji, active }: { messageId: string; meetupId: string; emoji: string; active: boolean }) => {
+      if (active) {
+        const { error } = await supabase
+          .from('message_reactions')
+          .delete()
+          .eq('message_id', messageId)
+          .eq('user_id', user!.id)
+          .eq('emoji', emoji);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('message_reactions')
+          .insert({ message_id: messageId, meetup_id: meetupId, user_id: user!.id, emoji });
+        if (error) throw error;
+      }
+    },
+    onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ['meetup', v.meetupId] }),
   });
 }
 
