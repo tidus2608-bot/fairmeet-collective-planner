@@ -22,7 +22,7 @@ import MeetupMap from '@/components/MeetupMap';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-const CATEGORY_FILTERS = ['Food', 'Drinks', 'Coffee', 'Park'] as const;
+const CATEGORY_FILTERS = ['Food', 'Drinks', 'Coffee'] as const;
 
 const TRANSPORT_OPTIONS = [
   { value: 'driving', label: '🚗 Driving' },
