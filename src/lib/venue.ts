@@ -38,6 +38,30 @@ export function venueTravelSpread(v: VenueRow): number | null {
   return times.length ? Math.max(...times) - Math.min(...times) : null;
 }
 
+// Radius (metres) of the map's "fair zone" circle. Covers every participant plus
+// a buffer, bounded so it stays sensible. Mirrors the edge function's search
+// radius so the circle matches the area venues are actually drawn from — venues
+// never appear outside it.
+export function fairZoneRadius(locations: { lat: number; lng: number }[]): number {
+  if (locations.length === 0) return 2000;
+  const center = {
+    lat: locations.reduce((s, l) => s + l.lat, 0) / locations.length,
+    lng: locations.reduce((s, l) => s + l.lng, 0) / locations.length,
+  };
+  const R = 6371000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dist = (b: { lat: number; lng: number }) => {
+    const dLat = toRad(b.lat - center.lat);
+    const dLng = toRad(b.lng - center.lng);
+    const h =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos(toRad(center.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(h));
+  };
+  const spread = locations.reduce((m, l) => Math.max(m, dist(l)), 0);
+  return Math.max(3000, Math.min(12000, spread + 2000));
+}
+
 // Sort venues fairest-first (smallest spread of travel times, i.e. everyone the
 // same time). Venues without travel data sort to the end.
 export function sortByFairness(venues: VenueRow[]): VenueRow[] {

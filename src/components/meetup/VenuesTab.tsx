@@ -13,7 +13,7 @@ import MeetupMap from '@/components/MeetupMap';
 import AddVenueDialog from '@/components/meetup/AddVenueDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserPreferences, DEFAULT_PREFS } from '@/hooks/useUserPreferences';
-import { venuePhotoUrl, priceLevelLabel, venueWorstMinutes, venueTravelSpread, sortByFairness } from '@/lib/venue';
+import { venuePhotoUrl, priceLevelLabel, venueWorstMinutes, venueTravelSpread, sortByFairness, fairZoneRadius } from '@/lib/venue';
 import type { Participant, TransportMode, VenueCategory } from '@/types/meetup';
 import { toast } from 'sonner';
 
@@ -136,7 +136,12 @@ export default function VenuesTab({ meetup, userId }: Props) {
 
   return (
     <div className="space-y-4">
-      <MeetupMap participants={mapParticipants} venues={mapVenues} midpoint={midpoint} />
+      <MeetupMap
+        participants={mapParticipants}
+        venues={mapVenues}
+        midpoint={midpoint}
+        fairZoneRadius={fairZoneRadius(locatedParticipants.map((p) => p.location!))}
+      />
 
       {locatedParticipants.length === 0 && (
         <Card>
