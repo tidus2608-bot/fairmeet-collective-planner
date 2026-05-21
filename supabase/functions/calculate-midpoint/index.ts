@@ -126,6 +126,20 @@ function json(payload: unknown, status = 200) {
   });
 }
 
+// Great-circle distance in metres.
+function haversine(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
+  const R = 6371000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const lat1 = toRad(a.lat);
+  const lat2 = toRad(b.lat);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
@@ -192,10 +206,27 @@ Deno.serve(async (req) => {
     const hardKeywords = [...new Set(allPrefs.map((pr) => pr.keyword).filter(Boolean))];
     const hardQuery = hardKeywords.join(' AND ');
 
-    // Location bias = rough centroid of the participants.
+    // Search centre = rough centroid of the participants.
     const center = {
       lat: located.reduce((s, p) => s + p.location.lat, 0) / located.length,
       lng: located.reduce((s, p) => s + p.location.lng, 0) / located.length,
+    };
+
+    // The search radius scales with how spread out the group is: it always covers
+    // every participant plus a small buffer, bounded so it never balloons. Both
+    // the Places search (as a HARD restriction) and a post-filter use this radius,
+    // and the client draws the same circle, so a venue can never land outside it.
+    const spreadRadius = located.reduce((m, p) => Math.max(m, haversine(center, p.location)), 0);
+    const searchRadius = clamp(spreadRadius + 2000, 3000, 12000);
+
+    // Rectangle bounds for locationRestriction (Text Search supports rectangle only).
+    const latDelta = searchRadius / 111320;
+    const lngDelta = searchRadius / (111320 * Math.cos((center.lat * Math.PI) / 180));
+    const locationRestriction = {
+      rectangle: {
+        low: { latitude: center.lat - latDelta, longitude: center.lng - lngDelta },
+        high: { latitude: center.lat + latDelta, longitude: center.lng + lngDelta },
+      },
     };
 
     // Optional departure time for traffic-aware estimates; must be in the future.
@@ -223,12 +254,7 @@ Deno.serve(async (req) => {
           const textQuery = [hardQuery, term].filter(Boolean).join(' ');
           const body: Record<string, unknown> = {
             textQuery,
-            locationBias: {
-              circle: {
-                center: { latitude: center.lat, longitude: center.lng },
-                radius: 5000,
-              },
-            },
+            locationRestriction,
             maxResultCount: MAX_RESULTS,
           };
           if (priceLevels.length) body.priceLevels = priceLevels;
@@ -256,6 +282,9 @@ Deno.serve(async (req) => {
               const lat = place.location?.latitude;
               const lng = place.location?.longitude;
               if (lat == null || lng == null) continue;
+              // Trim the rectangle's corners back to a true circle so nothing
+              // sits outside the radius the client draws.
+              if (haversine(center, { lat, lng }) > searchRadius) continue;
               candidatesById.set(place.id, {
                 place_id: place.id,
                 name: place.displayName?.text || 'Unknown venue',
@@ -279,7 +308,7 @@ Deno.serve(async (req) => {
 
     const candidates = Array.from(candidatesById.values());
     if (candidates.length === 0) {
-      return json({ midpoint: center, venues: [], note: 'No candidates from Places API' });
+      return json({ midpoint: center, radius: searchRadius, venues: [], note: 'No candidates from Places API' });
     }
 
     // ===== Step 2: Travel times via Routes API computeRouteMatrix =====
@@ -447,7 +476,7 @@ Deno.serve(async (req) => {
       };
     });
 
-    return json({ midpoint: center, venues });
+    return json({ midpoint: center, radius: searchRadius, venues });
   } catch (error) {
     return json({ error: (error as Error).message }, 500);
   }
