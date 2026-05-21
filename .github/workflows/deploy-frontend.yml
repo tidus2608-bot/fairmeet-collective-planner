@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 # Builds the Vite app and publishes it to the existing Cloudflare Pages project
-# (same URL as today). The committed .env supplies the VITE_* build vars, so the
+# (same URL as today). The committed .env supplihes the VITE_* build vars, so the
 # only repository secrets needed are the Cloudflare credentials below.
 jobs:
   deploy:
@@ -24,4 +24,4 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist --project-name=fairmeet-2x6 --branch=main
+          command: pages deploy dist --project-name=fairmeet --branch=main
