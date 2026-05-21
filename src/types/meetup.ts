@@ -1,6 +1,6 @@
 export type MeetupStatus = 'Planning' | 'Voting' | 'Confirmed';
 export type TransportMode = 'driving' | 'walking' | 'cycling' | 'transit';
-export type VenueCategory = 'Food' | 'Drinks' | 'Coffee' | 'Park';
+export type VenueCategory = 'Food' | 'Drinks' | 'Coffee';
 
 export interface Participant {
   id: string;
