@@ -22,45 +22,6 @@ const CATEGORY_QUERY: Record<string, string> = {
   Drinks: 'bar',
 };
 
-// Google place type -> our display category (used to label results from the API)
-const GOOGLE_TYPE_TO_CATEGORY: Record<string, string> = {
-  // Food
-  restaurant: 'Food',
-  meal_takeaway: 'Food',
-  meal_delivery: 'Food',
-  bakery: 'Food',
-  fast_food_restaurant: 'Food',
-  food: 'Food',
-  // Coffee
-  cafe: 'Coffee',
-  coffee_shop: 'Coffee',
-  // Drinks
-  bar: 'Drinks',
-  night_club: 'Drinks',
-  pub: 'Drinks',
-  wine_bar: 'Drinks',
-  cocktail_bar: 'Drinks',
-};
-
-/** Map a place's Google type fields to our display category.
- *  Checks primaryType first (most specific), then the types array.
- *  Falls back to `fallback` (the search bucket) if nothing matches. */
-function categoryFromTypes(
-  primaryType: string | undefined,
-  types: string[] | undefined,
-  fallback: string,
-): string {
-  if (primaryType) {
-    const cat = GOOGLE_TYPE_TO_CATEGORY[primaryType];
-    if (cat) return cat;
-  }
-  for (const t of types || []) {
-    const cat = GOOGLE_TYPE_TO_CATEGORY[t];
-    if (cat) return cat;
-  }
-  return fallback;
-}
-
 // Places API (New) price-level enum.
 // Index matches the integer stored in user_preferences.price_levels (1–4).
 // Level 0 ("Free") is not supported by the searchText endpoint and is omitted.
@@ -229,7 +190,7 @@ Deno.serve(async (req) => {
               userPool.push({
                 place_id: place.id,
                 name: place.displayName?.text || 'Unknown venue',
-                category: cat, // will be enriched via Place Details after scoring
+                category: cat,
                 rating: place.rating || 4.0,
                 address: place.formattedAddress || '',
                 location: {
@@ -321,37 +282,9 @@ Deno.serve(async (req) => {
       .filter((x) => x.maxT / 60 <= maxTravelMin)
       .sort((a, b) => a.maxT - b.maxT || a.variance - b.variance);
 
-    // ===== Step 4: Enrich top 5 venues with Google primaryType via Place Details =====
-    // searchText FieldMask doesn't support type fields reliably; Place Details does.
+    // ===== Step 4: Build venue response =====
     const RESULT_CAP = 5;
     const top5 = scored.slice(0, RESULT_CAP);
-
-    await Promise.all(
-      top5.map(async ({ c }) => {
-        try {
-          const res = await fetch(
-            `https://places.googleapis.com/v1/places/${c.place_id}`,
-            {
-              headers: {
-                'X-Goog-Api-Key': GOOGLE_MAPS_API_KEY as string,
-                'X-Goog-FieldMask': 'primaryType',
-              },
-            },
-          );
-          if (res.ok) {
-            const data = await res.json();
-            console.log(`Place Details ${c.place_id}: primaryType=${data.primaryType}`);
-            if (data.primaryType) {
-              c.category = categoryFromTypes(data.primaryType, undefined, c.category);
-            }
-          }
-        } catch (_e) {
-          // keep the search-bucket category as fallback
-        }
-      }),
-    );
-
-    // ===== Step 5: Build venue response =====
     const venues = top5.map(({ c, travel_times }) => ({
       name: c.name,
       category: c.category,
