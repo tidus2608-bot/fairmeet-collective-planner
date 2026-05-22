@@ -190,7 +190,7 @@ Deno.serve(async (req) => {
               userPool.push({
                 place_id: place.id,
                 name: place.displayName?.text || 'Unknown venue',
-                category: cat, // will be enriched via Place Details after scoring
+                category: cat,
                 rating: place.rating || 4.0,
                 address: place.formattedAddress || '',
                 location: {
