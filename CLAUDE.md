@@ -65,3 +65,7 @@ ship has to land on **`master`**. We are porting `main`'s useful extras onto
   PR into `master` (don't commit straight to `master`).
 - Keep CI green: `npm run lint` (0 errors), `npm run type-check`, `npm run test`,
   `npm run build`.
+- **Auto-merge:** enable GitHub native auto-merge (squash) on every new PR right
+  after pushing, so it merges itself once `verify` passes. Prereqs (one-time, set
+  in repo settings): "Allow auto-merge" enabled, and a branch-protection rule /
+  ruleset on `master` requiring the `verify` status check.
