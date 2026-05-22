@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Loader2, Star, Clock, Users } from 'lucide-react';
+import { Plus, Loader2, Star, Clock, Users, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -248,18 +248,29 @@ export default function VenuesTab({ meetup, userId }: Props) {
                 </div>
               )}
 
-              {isOrganizer && !v.in_poll && (
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  className="gap-1.5"
-                  onClick={() =>
-                    togglePoll.mutate({ venueId: v.id, inPoll: true, meetupId: meetup.id })
-                  }
+              <div className="flex items-center gap-2">
+                <a
+                  href={`https://www.google.com/maps?q=${v.location.lat},${v.location.lng}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
                 >
-                  <Plus className="w-3.5 h-3.5" /> Add to Vote
-                </Button>
-              )}
+                  <Button size="sm" variant="outline" className="gap-1.5">
+                    <MapPin className="w-3.5 h-3.5" /> View in Maps
+                  </Button>
+                </a>
+                {isOrganizer && !v.in_poll && (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="gap-1.5"
+                    onClick={() =>
+                      togglePoll.mutate({ venueId: v.id, inPoll: true, meetupId: meetup.id })
+                    }
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Add to Vote
+                  </Button>
+                )}
+              </div>
             </CardContent>
           </Card>
         ))}
