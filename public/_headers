@@ -1,0 +1,31 @@
+/*
+  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(self), camera=(), microphone=(), payment=(), interest-cohort=()
+  Cross-Origin-Opener-Policy: same-origin-allow-popups
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com https://maps.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://ntdxzuochwwrdezfrwuq.supabase.co wss://ntdxzuochwwrdezfrwuq.supabase.co https://maps.googleapis.com https://*.googleusercontent.com https://accounts.google.com; frame-src https://accounts.google.com; worker-src 'self' blob:; child-src 'self' blob:; manifest-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; upgrade-insecure-requests
+
+# Notes for the team:
+#
+# - This file belongs at public/_headers in the repo. Cloudflare Pages
+#   reads it at build time and emits headers per the syntax at
+#   https://developers.cloudflare.com/pages/configuration/headers/.
+#
+# - The CSP needs 'unsafe-inline' + 'unsafe-eval' under script-src because
+#   the Google Maps JS SDK injects inline bootstraps and uses eval-like
+#   patterns. Tightening this requires switching to a nonce/hash strategy
+#   on every Vite build — non-trivial.
+#
+# - connect-src is locked to your Supabase project (REST + Realtime over
+#   wss), Maps APIs, Google OAuth, and Google's user-content CDN. If you
+#   add another backend (analytics, Stripe, etc.) you must add it here.
+#
+# - frame-ancestors 'none' + X-Frame-Options: DENY block all iframe
+#   embedding of FairMeet. Loosen only if you intentionally embed the app
+#   somewhere.
+#
+# - HSTS preload=31536000 is one year; remove the preload directive until
+#   you're certain you won't roll back to HTTP, since preload submissions
+#   are sticky.
