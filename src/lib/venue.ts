@@ -62,15 +62,32 @@ export function fairZoneRadius(locations: { lat: number; lng: number }[]): numbe
   return Math.max(3000, Math.min(12000, spread + 2000));
 }
 
-// Sort venues fairest-first (smallest spread of travel times, i.e. everyone the
-// same time). Venues without travel data sort to the end.
+// Sort venues by the same criteria calculate-midpoint v19 uses to score them:
+//
+//   Primary key  — worst-case travel time across the group (smallest first).
+//                  Protects the worst-served participant. A venue that is
+//                  10/10/18 min beats a venue that is 20/20/20 min, because
+//                  nobody has to travel more than 18 in the first.
+//   Tiebreaker   — spread of travel times, max − min (smallest first). When
+//                  the worst case ties, prefer the option where the group is
+//                  closest to equal.
+//
+// Venues without travel-time data (e.g. manually added before any
+// recalculation) sort to the end.
+//
+// Note: an earlier version of this function sorted by spread first, which
+// inverted the priority — it would have surfaced 20/20/20 over 10/10/18.
+// That mismatch with the edge function's scoring is what this rewrite fixes.
 export function sortByFairness(venues: VenueRow[]): VenueRow[] {
   return [...venues].sort((a, b) => {
-    const sa = venueTravelSpread(a);
-    const sb = venueTravelSpread(b);
-    if (sa == null && sb == null) return 0;
-    if (sa == null) return 1;
-    if (sb == null) return -1;
+    const wa = venueWorstMinutes(a);
+    const wb = venueWorstMinutes(b);
+    if (wa == null && wb == null) return 0;
+    if (wa == null) return 1;
+    if (wb == null) return -1;
+    if (wa !== wb) return wa - wb;
+    const sa = venueTravelSpread(a) ?? 0;
+    const sb = venueTravelSpread(b) ?? 0;
     return sa - sb;
   });
 }
