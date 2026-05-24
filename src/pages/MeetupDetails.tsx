@@ -79,12 +79,12 @@ export default function MeetupDetails() {
       <div className="mx-auto w-full max-w-lg md:max-w-3xl">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <div className="px-4 pt-3">
-            <TabsList className="grid w-full grid-cols-5">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="preferences">Prefs</TabsTrigger>
-              <TabsTrigger value="venues">Venues</TabsTrigger>
-              <TabsTrigger value="vote">Vote</TabsTrigger>
-              <TabsTrigger value="chat" className="relative">
+            <TabsList className="grid w-full grid-cols-5 p-0.5">
+              <TabsTrigger value="overview" className="text-xs sm:text-sm px-1 sm:px-3">Overview</TabsTrigger>
+              <TabsTrigger value="preferences" className="text-xs sm:text-sm px-1 sm:px-3">Prefs</TabsTrigger>
+              <TabsTrigger value="venues" className="text-xs sm:text-sm px-1 sm:px-3">Venues</TabsTrigger>
+              <TabsTrigger value="vote" className="text-xs sm:text-sm px-1 sm:px-3">Vote</TabsTrigger>
+              <TabsTrigger value="chat" className="relative text-xs sm:text-sm px-1 sm:px-3">
                 Chat
                 {unreadChat > 0 && (
                   <span className="absolute -top-1.5 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-medium flex items-center justify-center">

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Copy, Trash2, LogOut, Check, Clock, ExternalLink, CalendarClock, CalendarPlus, Save } from 'lucide-react';
+import { Copy, Trash2, LogOut, Check, Clock, ExternalLink, CalendarPlus, Save } from 'lucide-react';
 import { format } from 'date-fns';
 import { QRCodeSVG } from 'qrcode.react';
 import { Button } from '@/components/ui/button';
@@ -107,23 +107,35 @@ export default function OverviewTab({ meetup, userId }: Props) {
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
+          {/* Stat boxes: readiness + date */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-muted/50 rounded-lg p-3 flex flex-col gap-1">
+              <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Readiness</span>
+              <span className="text-base font-bold text-primary">
+                {readyCount}/{total} Ready
+              </span>
+            </div>
+            <div className="bg-muted/50 rounded-lg p-3 flex flex-col gap-1">
+              <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+                {meetup.scheduled_at ? 'Date' : 'Status'}
+              </span>
+              <span className="text-base font-bold text-primary">
+                {meetup.scheduled_at
+                  ? format(new Date(meetup.scheduled_at), 'MMM d, h:mm a')
+                  : meetup.status}
+              </span>
+            </div>
+          </div>
+          {/* Group consensus progress */}
           <div className="space-y-1.5">
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Preferences set</span>
-              <span className="font-medium">
-                {readyCount}/{total} participants
+              <span className="text-muted-foreground">Group consensus</span>
+              <span className="font-medium text-primary">
+                {total > 0 ? Math.round((readyCount / total) * 100) : 0}%
               </span>
             </div>
             <Progress value={total > 0 ? (readyCount / total) * 100 : 0} className="h-2" />
           </div>
-          {meetup.scheduled_at ? (
-            <p className="text-sm text-muted-foreground flex items-center gap-1.5">
-              <CalendarClock className="w-4 h-4" />
-              {format(new Date(meetup.scheduled_at), 'EEEE, MMM d · h:mm a')}
-            </p>
-          ) : (
-            <p className="text-xs text-muted-foreground">No date set yet</p>
-          )}
           {meetup.scheduled_at && (
             <Button variant="outline" size="sm" className="gap-1.5" onClick={handleAddToCalendar}>
               <CalendarPlus className="w-3.5 h-3.5" /> Add to calendar
@@ -197,33 +209,33 @@ export default function OverviewTab({ meetup, userId }: Props) {
       {/* Participants */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Participants ({total})</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base">Participants</CardTitle>
+            <span className="text-sm text-muted-foreground">{total} invited</span>
+          </div>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        <CardContent className="px-4 pb-4 pt-0">
+          <div className="divide-y divide-border">
             {participants.map((p) => {
               const ready = p.status === 'location_set';
               return (
-                <div key={p.id} className="flex items-center gap-2.5 p-2 rounded-lg bg-muted/50">
-                  <Avatar className="w-8 h-8 shrink-0">
-                    <AvatarFallback className="text-xs">{initials(p.user_name)}</AvatarFallback>
-                  </Avatar>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{p.user_name}</p>
-                    <span
-                      className={`text-[10px] flex items-center gap-0.5 ${ready ? 'text-green-600' : 'text-amber-600'}`}
-                    >
-                      {ready ? (
-                        <>
-                          <Check className="w-3 h-3" /> Ready
-                        </>
-                      ) : (
-                        <>
-                          <Clock className="w-3 h-3" /> Thinking
-                        </>
-                      )}
-                    </span>
+                <div key={p.id} className="flex items-center justify-between py-3">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="w-10 h-10 shrink-0">
+                      <AvatarFallback className="text-sm font-medium">{initials(p.user_name)}</AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold truncate">{p.user_name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {ready ? 'Location set' : 'Pending location…'}
+                      </p>
+                    </div>
                   </div>
+                  {ready ? (
+                    <Check className="w-5 h-5 text-green-500 shrink-0" />
+                  ) : (
+                    <Clock className="w-5 h-5 text-muted-foreground shrink-0" />
+                  )}
                 </div>
               );
             })}
