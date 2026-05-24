@@ -1,6 +1,7 @@
 export type MeetupStatus = 'Planning' | 'Voting' | 'Confirmed';
 export type TransportMode = 'driving' | 'walking' | 'cycling' | 'transit';
 export type VenueCategory = 'Food' | 'Drinks' | 'Coffee';
+export type VoteType = 'up' | 'down';
 
 export interface Participant {
   id: string;
@@ -11,6 +12,9 @@ export interface Participant {
   address?: string;
   transportMode: TransportMode;
   status: 'awaiting' | 'location_set';
+  maxTravelTime?: number;
+  fairnessImportance?: number;
+  venueTypes?: string[];
 }
 
 export interface VenueSuggestion {
@@ -36,6 +40,14 @@ export interface ChatMessage {
 export interface PollVote {
   venueId: string;
   userId: string;
+  voteType: VoteType;
+}
+
+export interface VenueTally {
+  venueId: string;
+  upvotes: number;
+  downvotes: number;
+  score: number;
 }
 
 export interface Meetup {

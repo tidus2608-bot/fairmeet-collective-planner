@@ -34,6 +34,9 @@ export interface ParticipantRow {
   address: string | null;
   transport_mode: string;
   status: string;
+  max_travel_time: number | null;
+  fairness_importance: number | null;
+  venue_types: string[] | null;
 }
 
 export interface VenueOpeningHours {
@@ -75,6 +78,7 @@ export interface PollVoteRow {
   meetup_id: string;
   venue_id: string;
   user_id: string;
+  vote_type: string;
 }
 
 export interface MessageReactionRow {
@@ -296,16 +300,61 @@ export function useToggleVenuePoll() {
   });
 }
 
-export function useCastVote() {
+export function useVoteVenue() {
   const { user } = useAuth();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ meetupId, venueId }: { meetupId: string; venueId: string }) => {
-      // Delete existing vote then insert new one
-      await supabase.from('poll_votes').delete().eq('meetup_id', meetupId).eq('user_id', user!.id);
+    mutationFn: async ({ meetupId, venueId, voteType, currentVoteType }: {
+      meetupId: string;
+      venueId: string;
+      voteType: 'up' | 'down';
+      currentVoteType?: string | null;
+    }) => {
+      // Toggle: if same vote_type already exists, delete it; otherwise upsert
+      if (currentVoteType === voteType) {
+        const { error } = await supabase
+          .from('poll_votes')
+          .delete()
+          .eq('venue_id', venueId)
+          .eq('user_id', user!.id)
+          .eq('vote_type', voteType);
+        if (error) throw error;
+      } else {
+        // Remove opposite vote if present, then insert new vote
+        await supabase
+          .from('poll_votes')
+          .delete()
+          .eq('venue_id', venueId)
+          .eq('user_id', user!.id);
+        const { error } = await supabase
+          .from('poll_votes')
+          .insert({ meetup_id: meetupId, venue_id: venueId, user_id: user!.id, vote_type: voteType });
+        if (error) throw error;
+      }
+    },
+    onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ['meetup', v.meetupId] }),
+  });
+}
+
+export function useUpdatePreferences() {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ meetupId, maxTravelTime, fairnessImportance, venueTypes }: {
+      meetupId: string;
+      maxTravelTime: number;
+      fairnessImportance: number;
+      venueTypes: string[];
+    }) => {
       const { error } = await supabase
-        .from('poll_votes')
-        .insert({ meetup_id: meetupId, venue_id: venueId, user_id: user!.id });
+        .from('participants')
+        .update({
+          max_travel_time: maxTravelTime,
+          fairness_importance: fairnessImportance,
+          venue_types: venueTypes,
+        })
+        .eq('meetup_id', meetupId)
+        .eq('user_id', user!.id);
       if (error) throw error;
     },
     onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ['meetup', v.meetupId] }),

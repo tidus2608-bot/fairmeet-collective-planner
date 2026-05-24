@@ -49,48 +49,6 @@ export type Database = {
           },
         ]
       }
-      message_reactions: {
-        Row: {
-          created_at: string
-          emoji: string
-          id: string
-          meetup_id: string
-          message_id: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          emoji: string
-          id?: string
-          meetup_id: string
-          message_id: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          emoji?: string
-          id?: string
-          meetup_id?: string
-          message_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "message_reactions_message_id_fkey"
-            columns: ["message_id"]
-            isOneToOne: false
-            referencedRelation: "chat_messages"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "message_reactions_meetup_id_fkey"
-            columns: ["meetup_id"]
-            isOneToOne: false
-            referencedRelation: "meetups"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       meetups: {
         Row: {
           created_at: string
@@ -127,42 +85,93 @@ export type Database = {
         }
         Relationships: []
       }
+      message_reactions: {
+        Row: {
+          created_at: string
+          emoji: string
+          id: string
+          meetup_id: string
+          message_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          emoji: string
+          id?: string
+          meetup_id: string
+          message_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          emoji?: string
+          id?: string
+          meetup_id?: string
+          message_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_reactions_meetup_id_fkey"
+            columns: ["meetup_id"]
+            isOneToOne: false
+            referencedRelation: "meetups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_reactions_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "chat_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       participants: {
         Row: {
           address: string | null
           avatar_url: string | null
           created_at: string
+          fairness_importance: number | null
           id: string
           location: Json | null
+          max_travel_time: number | null
           meetup_id: string
           status: string
           transport_mode: string
           user_id: string
           user_name: string
+          venue_types: string[] | null
         }
         Insert: {
           address?: string | null
           avatar_url?: string | null
           created_at?: string
+          fairness_importance?: number | null
           id?: string
           location?: Json | null
+          max_travel_time?: number | null
           meetup_id: string
           status?: string
           transport_mode?: string
           user_id: string
           user_name: string
+          venue_types?: string[] | null
         }
         Update: {
           address?: string | null
           avatar_url?: string | null
           created_at?: string
+          fairness_importance?: number | null
           id?: string
           location?: Json | null
+          max_travel_time?: number | null
           meetup_id?: string
           status?: string
           transport_mode?: string
           user_id?: string
           user_name?: string
+          venue_types?: string[] | null
         }
         Relationships: [
           {
@@ -181,6 +190,7 @@ export type Database = {
           meetup_id: string
           user_id: string
           venue_id: string
+          vote_type: string
         }
         Insert: {
           created_at?: string
@@ -188,6 +198,7 @@ export type Database = {
           meetup_id: string
           user_id: string
           venue_id: string
+          vote_type?: string
         }
         Update: {
           created_at?: string
@@ -195,6 +206,7 @@ export type Database = {
           meetup_id?: string
           user_id?: string
           venue_id?: string
+          vote_type?: string
         }
         Relationships: [
           {
@@ -212,33 +224,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      profiles: {
-        Row: {
-          avatar_url: string | null
-          created_at: string
-          display_name: string
-          id: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          avatar_url?: string | null
-          created_at?: string
-          display_name: string
-          id?: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          avatar_url?: string | null
-          created_at?: string
-          display_name?: string
-          id?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
       }
       user_preferences: {
         Row: {
