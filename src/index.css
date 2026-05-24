@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
 
 @plugin "tailwindcss-animate";
 @plugin "@tailwindcss/typography";
@@ -13,7 +13,7 @@
  * existing :root variables rather than replacing them.
  */
 @theme inline {
-  --font-sans: "Inter", system-ui, sans-serif;
+  --font-sans: "Plus Jakarta Sans", system-ui, sans-serif;
 
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));
@@ -151,5 +151,11 @@
 
   body {
     @apply bg-background text-foreground font-sans;
+  }
+}
+
+@layer utilities {
+  .soft-glow {
+    box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.05);
   }
 }

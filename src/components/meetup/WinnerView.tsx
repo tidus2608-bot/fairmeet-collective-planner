@@ -4,6 +4,7 @@ import { MapPin, Star, ExternalLink, MessageCircle, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import type { MeetupRow } from '@/hooks/useMeetups';
 
 interface Props {
@@ -89,28 +90,39 @@ export default function WinnerView({ meetup, onOpenChat }: Props) {
 
       {(avgTime != null || maxTime != null || participants.length > 0) && (
         <Card>
-          <CardContent className="p-4 space-y-3">
-            <h3 className="text-sm font-semibold">Why this is the fairest choice</h3>
-            <div className="grid grid-cols-3 gap-3">
-              {avgTime != null && (
-                <div className="bg-muted rounded-lg p-3 text-center">
-                  <p className="text-xl font-bold text-primary">{avgTime}</p>
-                  <p className="text-[10px] text-muted-foreground leading-tight">avg trip<br />(min)</p>
+          <CardContent className="p-4 space-y-4">
+            <h3 className="text-sm font-semibold">Why it's the fairest choice</h3>
+            {avgTime != null && maxTime != null && (
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Travel time variance</span>
+                  <span className="font-medium text-green-600">
+                    Low (±{Math.round(maxTime - avgTime)} min)
+                  </span>
                 </div>
-              )}
-              {maxTime != null && (
-                <div className="bg-muted rounded-lg p-3 text-center">
-                  <p className="text-xl font-bold text-primary">{maxTime}</p>
-                  <p className="text-[10px] text-muted-foreground leading-tight">max trip<br />(min)</p>
+                <Progress
+                  value={maxTime > 0 ? Math.max(10, 100 - ((maxTime - avgTime) / maxTime) * 100) : 100}
+                  className="h-2 [&>div]:bg-green-500"
+                />
+              </div>
+            )}
+            {participants.length > 0 && (
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Attendees notified</span>
+                  <span className="font-medium text-green-600">
+                    {participants.length} / {participants.length}
+                  </span>
                 </div>
-              )}
-              {participants.length > 0 && (
-                <div className="bg-muted rounded-lg p-3 text-center">
-                  <p className="text-xl font-bold text-primary">{participants.length}</p>
-                  <p className="text-[10px] text-muted-foreground leading-tight">attendees</p>
-                </div>
-              )}
-            </div>
+                <Progress value={100} className="h-2 [&>div]:bg-green-500" />
+              </div>
+            )}
+            {avgTime != null && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                Average trip: <span className="font-semibold text-foreground ml-1">{avgTime} min</span>
+              </p>
+            )}
           </CardContent>
         </Card>
       )}
