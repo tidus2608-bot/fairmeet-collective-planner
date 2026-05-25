@@ -8,7 +8,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Progress } from '@/components/ui/progress';
 import { MeetupRow, useUpdateMeetup, useDeleteMeetup, useLeaveMeetup } from '@/hooks/useMeetups';
 import { downloadMeetupICS } from '@/lib/calendar';
 import { toast } from 'sonner';
@@ -96,10 +95,10 @@ export default function OverviewTab({ meetup, userId }: Props) {
               variant="secondary"
               className={
                 meetup.status === 'Planning'
-                  ? 'bg-blue-100 text-blue-700'
+                  ? 'bg-surface-container text-on-surface-variant'
                   : meetup.status === 'Voting'
-                    ? 'bg-amber-100 text-amber-700'
-                    : 'bg-green-100 text-green-700'
+                    ? 'bg-primary-container/10 text-primary'
+                    : 'bg-tertiary-container/10 text-tertiary'
               }
             >
               {meetup.status}
@@ -109,14 +108,14 @@ export default function OverviewTab({ meetup, userId }: Props) {
         <CardContent className="space-y-3">
           {/* Stat boxes: readiness + date */}
           <div className="grid grid-cols-2 gap-2">
-            <div className="bg-muted/50 rounded-lg p-3 flex flex-col gap-1">
-              <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Readiness</span>
+            <div className="bg-surface-container-low rounded-lg p-4 flex flex-col gap-1">
+              <span className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">Readiness</span>
               <span className="text-base font-bold text-primary">
                 {readyCount}/{total} Ready
               </span>
             </div>
-            <div className="bg-muted/50 rounded-lg p-3 flex flex-col gap-1">
-              <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+            <div className="bg-surface-container-low rounded-lg p-4 flex flex-col gap-1">
+              <span className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">
                 {meetup.scheduled_at ? 'Date' : 'Status'}
               </span>
               <span className="text-base font-bold text-primary">
@@ -129,12 +128,17 @@ export default function OverviewTab({ meetup, userId }: Props) {
           {/* Group consensus progress */}
           <div className="space-y-1.5">
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Group consensus</span>
+              <span className="text-on-surface-variant">Group consensus</span>
               <span className="font-medium text-primary">
                 {total > 0 ? Math.round((readyCount / total) * 100) : 0}%
               </span>
             </div>
-            <Progress value={total > 0 ? (readyCount / total) * 100 : 0} className="h-2" />
+            <div className="h-2 w-full bg-secondary-container rounded-full overflow-hidden">
+              <div
+                className="h-full bg-primary rounded-full transition-all duration-300"
+                style={{ width: `${total > 0 ? (readyCount / total) * 100 : 0}%` }}
+              />
+            </div>
           </div>
           {meetup.scheduled_at && (
             <Button variant="outline" size="sm" className="gap-1.5" onClick={handleAddToCalendar}>
@@ -193,7 +197,7 @@ export default function OverviewTab({ meetup, userId }: Props) {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center gap-2">
-            <div className="flex-1 text-xs text-muted-foreground bg-muted rounded-md px-3 py-2 font-mono truncate">
+            <div className="flex-1 text-xs text-on-surface-variant bg-surface-container-low rounded-lg px-3 py-2 font-mono truncate">
               {inviteUrl}
             </div>
             <Button size="sm" variant="outline" className="gap-1.5 shrink-0" onClick={handleCopyInvite}>
@@ -211,30 +215,33 @@ export default function OverviewTab({ meetup, userId }: Props) {
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base">Participants</CardTitle>
-            <span className="text-sm text-muted-foreground">{total} invited</span>
+            <span className="text-sm text-on-surface-variant">{total} invited</span>
           </div>
         </CardHeader>
         <CardContent className="px-4 pb-4 pt-0">
-          <div className="divide-y divide-border">
-            {participants.map((p) => {
+          <div className="divide-y divide-surface-container-high">
+            {participants.map((p, idx) => {
               const ready = p.status === 'location_set';
+              const avatarBg = idx % 2 === 0
+                ? 'bg-primary-fixed text-on-primary-fixed'
+                : 'bg-secondary-fixed text-on-secondary-fixed';
               return (
                 <div key={p.id} className="flex items-center justify-between py-3">
                   <div className="flex items-center gap-3">
                     <Avatar className="w-10 h-10 shrink-0">
-                      <AvatarFallback className="text-sm font-medium">{initials(p.user_name)}</AvatarFallback>
+                      <AvatarFallback className={`text-sm font-medium ${avatarBg}`}>{initials(p.user_name)}</AvatarFallback>
                     </Avatar>
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold truncate">{p.user_name}</p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-sm font-semibold truncate text-on-surface">{p.user_name}</p>
+                      <p className="text-xs text-on-surface-variant">
                         {ready ? 'Location set' : 'Pending location…'}
                       </p>
                     </div>
                   </div>
                   {ready ? (
-                    <Check className="w-5 h-5 text-green-500 shrink-0" />
+                    <Check className="w-5 h-5 text-tertiary shrink-0" />
                   ) : (
-                    <Clock className="w-5 h-5 text-muted-foreground shrink-0" />
+                    <Clock className="w-5 h-5 text-outline-variant shrink-0" />
                   )}
                 </div>
               );
@@ -245,13 +252,13 @@ export default function OverviewTab({ meetup, userId }: Props) {
 
       {/* Confirmed venue */}
       {meetup.status === 'Confirmed' && meetup.final_venue && (
-        <Card className="border-green-200 bg-green-50">
+        <Card className="border-tertiary-container/30 bg-tertiary-container/10">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base text-green-800">Confirmed Venue</CardTitle>
+            <CardTitle className="text-base text-tertiary">Confirmed Venue</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <p className="font-semibold">{meetup.final_venue.name}</p>
-            <p className="text-sm text-muted-foreground">{meetup.final_venue.address}</p>
+            <p className="font-semibold text-on-surface">{meetup.final_venue.name}</p>
+            <p className="text-sm text-on-surface-variant">{meetup.final_venue.address}</p>
             <Button variant="outline" size="sm" className="gap-2" asChild>
               <a
                 href={`https://www.google.com/maps/dir/?api=1&destination=${meetup.final_venue.location?.lat},${meetup.final_venue.location?.lng}`}

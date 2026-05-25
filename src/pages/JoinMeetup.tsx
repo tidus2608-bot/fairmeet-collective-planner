@@ -2,9 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Loader2, MapPin, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent } from '@/components/ui/card';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useAuth } from '@/hooks/useAuth';
 import { useJoinMeetup } from '@/hooks/useMeetups';
 import { supabase } from '@/integrations/supabase/client';
@@ -111,71 +108,91 @@ export default function JoinMeetup() {
 
   if (!loading && !user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-primary/10 via-primary/5 to-background flex flex-col items-center justify-center p-6">
-        <div className="w-full max-w-sm space-y-4">
-          {/* Hero */}
-          <div className="text-center space-y-2 pb-2">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-primary/10 mb-2">
-              <MapPin className="w-7 h-7 text-primary" />
+      <div className="min-h-screen bg-surface text-on-surface flex flex-col items-center justify-center p-6 relative overflow-hidden">
+        {/* Dot pattern background */}
+        <div className="pattern-bg fixed inset-0 pointer-events-none" />
+
+        {/* Invitation card */}
+        <div className="relative z-10 w-full max-w-md bg-surface-container-lowest rounded-[24px] shadow-[0px_4px_20px_rgba(0,0,0,0.05)] p-8 space-y-6">
+          {/* Header logo */}
+          <div className="flex justify-center">
+            <div className="w-16 h-16 bg-surface-container-low rounded-2xl shadow-sm flex items-center justify-center">
+              <MapPin className="w-8 h-8 text-primary" />
             </div>
-            <h1 className="text-2xl font-bold leading-tight">
+          </div>
+
+          <div className="text-center space-y-3">
+            <h1 className="text-xl font-bold leading-tight text-on-surface">
               You're invited to{' '}
               <span className="text-primary">{preview?.name ?? 'a Meetup'}!</span>
             </h1>
-            <p className="text-sm text-muted-foreground">
-              Join your friends and find the perfect place to meet
-            </p>
+
+            {/* Host chip */}
+            {preview && (
+              <div className="inline-flex items-center gap-2 bg-surface-container-low px-4 py-2 rounded-full border border-outline-variant/30">
+                <div className="w-7 h-7 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container text-xs font-bold">
+                  {preview.organizer_name[0].toUpperCase()}
+                </div>
+                <span className="text-sm text-on-surface-variant">
+                  Hosted by{' '}
+                  <span className="text-primary font-semibold">{preview.organizer_name}</span>
+                </span>
+              </div>
+            )}
           </div>
 
-          {/* Host card */}
-          {preview && (
-            <Card>
-              <CardContent className="p-4 flex items-center gap-3">
-                <Avatar className="w-10 h-10">
-                  <AvatarFallback className="text-sm bg-primary/10 text-primary">
-                    {preview.organizer_name[0].toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <p className="text-sm font-medium">Hosted by {preview.organizer_name}</p>
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <Users className="w-3 h-3" />
-                    {preview.participant_count} participant{preview.participant_count !== 1 ? 's' : ''} so far
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
           {/* Join form */}
-          <Card>
-            <CardContent className="p-5 space-y-3">
-              <p className="text-sm font-medium">What's your name?</p>
-              <form onSubmit={handleGuestJoin} className="space-y-3">
-                <Input
+          <form onSubmit={handleGuestJoin} className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-on-surface-variant ml-1" htmlFor="guest-name">
+                Enter your name to join
+              </label>
+              <div className="relative">
+                <input
+                  id="guest-name"
                   autoFocus
-                  placeholder="Your name"
+                  placeholder="E.g. Your name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   maxLength={60}
+                  className="w-full h-14 bg-surface-variant/30 border-none rounded-xl px-5 pr-12 text-base focus:ring-2 focus:ring-primary focus:bg-surface-container-lowest outline-none transition-all placeholder:text-outline-variant"
                 />
-                <Button
-                  type="submit"
-                  className="w-full gap-2"
-                  disabled={!name.trim() || submitting || joinMeetup.isPending}
-                >
-                  {(submitting || joinMeetup.isPending) && (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  )}
-                  Get Started
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
+                <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-outline-variant">
+                  <Users className="w-4 h-4" />
+                </div>
+              </div>
+            </div>
+            <button
+              type="submit"
+              disabled={!name.trim() || submitting || joinMeetup.isPending}
+              className="w-full h-14 bg-primary text-on-primary rounded-2xl font-semibold shadow-lg shadow-primary/20 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+            >
+              {(submitting || joinMeetup.isPending) && (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              )}
+              Get Started
+            </button>
+          </form>
+
+          {/* Features grid */}
+          <div className="pt-4 border-t border-outline-variant/20 grid grid-cols-2 gap-4">
+            <div className="flex flex-col items-center text-center p-3 gap-2">
+              <div className="w-10 h-10 bg-tertiary-container/10 text-tertiary rounded-full flex items-center justify-center">
+                <MapPin className="w-5 h-5" />
+              </div>
+              <span className="text-xs text-on-surface-variant">Fairest Locations</span>
+            </div>
+            <div className="flex flex-col items-center text-center p-3 gap-2">
+              <div className="w-10 h-10 bg-primary-container/10 text-primary rounded-full flex items-center justify-center">
+                <Users className="w-5 h-5" />
+              </div>
+              <span className="text-xs text-on-surface-variant">Group Voting</span>
+            </div>
+          </div>
 
           <button
             onClick={loginFallback}
-            className="w-full text-xs text-muted-foreground hover:underline text-center"
+            className="w-full text-xs text-on-surface-variant hover:underline text-center"
           >
             Have an account? Log in instead
           </button>

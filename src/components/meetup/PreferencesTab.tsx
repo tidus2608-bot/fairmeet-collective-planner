@@ -19,13 +19,18 @@ import PlacesAutocomplete from '@/components/PlacesAutocomplete';
 import { toast } from 'sonner';
 
 const CATEGORIES = ['Food', 'Coffee', 'Drinks'] as const;
-const PRICE_LABELS = ['Free', '$', '$$', '$$$', '$$$$'];
+const PRICE_LABELS = ['$', '$$', '$$$', '$$$$'];
 const RATING_OPTIONS: { label: string; value: number }[] = [
   { label: 'Any', value: 0 },
   { label: '3★+', value: 3 },
   { label: '4★+', value: 4 },
   { label: '4.5★+', value: 4.5 },
 ];
+const FOOD_CUISINES = [
+  'Italian', 'Japanese', 'Korean', 'Chinese', 'Thai',
+  'Indian', 'Mexican', 'Vietnamese', 'American', 'Mediterranean', 'French',
+];
+const DRINKS_SUBTYPES = ['Wine Bar', 'Cocktail Bar', 'Pub', 'Night Club'];
 
 interface Props {
   meetup: MeetupRow;
@@ -49,10 +54,11 @@ export default function PreferencesTab({ meetup, userId }: Props) {
 
   // Venue preference state — seeded from global user_preferences once loaded
   const [categories, setCategories] = useState<string[]>(['Food', 'Coffee', 'Drinks']);
-  const [priceLevels, setPriceLevels] = useState<number[]>([0, 1, 2, 3, 4]);
+  const [priceLevels, setPriceLevels] = useState<number[]>([1, 2, 3, 4]);
   const [minRating, setMinRating] = useState<number>(0);
   const [keyword, setKeyword] = useState<string>('');
   const [openNow, setOpenNow] = useState<boolean>(false);
+  const [cuisine, setCuisine] = useState<string>('');
 
   useEffect(() => {
     if (!userPrefs) return;
@@ -61,7 +67,18 @@ export default function PreferencesTab({ meetup, userId }: Props) {
     setMinRating(userPrefs.min_rating);
     setKeyword(userPrefs.keyword);
     setOpenNow(userPrefs.open_now);
+    setCuisine(userPrefs.cuisine);
   }, [userPrefs]);
+
+  // Clear cuisine selection when its parent category is deselected
+  useEffect(() => {
+    if (!cuisine) return;
+    const isFood = FOOD_CUISINES.includes(cuisine);
+    const isDrinks = DRINKS_SUBTYPES.includes(cuisine);
+    if ((isFood && !categories.includes('Food')) || (isDrinks && !categories.includes('Drinks'))) {
+      setCuisine('');
+    }
+  }, [categories, cuisine]);
 
   const handleUseCurrentLocation = () => {
     if (!navigator.geolocation) {
@@ -108,6 +125,7 @@ export default function PreferencesTab({ meetup, userId }: Props) {
           price_levels: priceLevels,
           keyword: keyword.trim(),
           open_now: openNow,
+          cuisine,
         }),
       ]);
       toast.success('Preferences saved!');
@@ -118,6 +136,7 @@ export default function PreferencesTab({ meetup, userId }: Props) {
 
   const fairnessLabel = fairnessImportance < 34 ? 'Low' : fairnessImportance < 67 ? 'Medium' : 'High';
   const isPending = updatePreferences.isPending || savePref.isPending;
+  const showCuisineChips = categories.includes('Food') || categories.includes('Drinks');
 
   return (
     <div className="space-y-4">
@@ -252,16 +271,46 @@ export default function PreferencesTab({ meetup, userId }: Props) {
             </div>
           </div>
 
+          {showCuisineChips && (
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Cuisine</Label>
+              <div className="flex flex-wrap gap-2">
+                {categories.includes('Food') && FOOD_CUISINES.map((c) => (
+                  <Button
+                    key={c}
+                    type="button"
+                    size="sm"
+                    variant={cuisine === c ? 'default' : 'outline'}
+                    onClick={() => setCuisine((prev) => prev === c ? '' : c)}
+                  >
+                    {c}
+                  </Button>
+                ))}
+                {categories.includes('Drinks') && DRINKS_SUBTYPES.map((c) => (
+                  <Button
+                    key={c}
+                    type="button"
+                    size="sm"
+                    variant={cuisine === c ? 'default' : 'outline'}
+                    onClick={() => setCuisine((prev) => prev === c ? '' : c)}
+                  >
+                    {c}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label className="text-sm font-medium">Price</Label>
             <div className="flex flex-wrap gap-2">
-              {PRICE_LABELS.map((label, lvl) => (
+              {PRICE_LABELS.map((label, i) => (
                 <Button
-                  key={lvl}
+                  key={i}
                   type="button"
                   size="sm"
-                  variant={priceLevels.includes(lvl) ? 'default' : 'outline'}
-                  onClick={() => togglePrice(lvl)}
+                  variant={priceLevels.includes(i + 1) ? 'default' : 'outline'}
+                  onClick={() => togglePrice(i + 1)}
                 >
                   {label}
                 </Button>
@@ -292,7 +341,7 @@ export default function PreferencesTab({ meetup, userId }: Props) {
             </Label>
             <Input
               id="keyword"
-              placeholder="e.g. quiet, rooftop, vegan"
+              placeholder="e.g. quiet, rooftop, outdoor"
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
             />
@@ -312,7 +361,7 @@ export default function PreferencesTab({ meetup, userId }: Props) {
       </Card>
 
       <Button
-        className="w-full gap-2"
+        className="w-full gap-2 py-4 h-auto rounded-2xl font-semibold shadow-lg shadow-primary/20"
         onClick={handleSubmit}
         disabled={isPending}
       >

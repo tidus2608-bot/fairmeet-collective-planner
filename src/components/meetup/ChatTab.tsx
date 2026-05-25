@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from 'react';
 import { Send, AlertCircle, RotateCw, X, MapPin, CalendarClock } from 'lucide-react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { MeetupRow, useSendChatMessage } from '@/hooks/useMeetups';
@@ -226,7 +225,7 @@ export default function ChatTab({ meetup, userId }: Props) {
       <div className="flex flex-col flex-1 min-w-0">
         <div className="flex-1 overflow-y-auto space-y-1 pb-4">
           {items.length === 0 && (
-            <div className="text-center py-16 text-muted-foreground">
+            <div className="text-center py-16 text-on-surface-variant">
               <p className="text-sm">No messages yet. Say hello! 👋</p>
             </div>
           )}
@@ -244,7 +243,7 @@ export default function ChatTab({ meetup, userId }: Props) {
               <div key={item.id}>
                 {showDay && (
                   <div className="flex items-center justify-center my-3">
-                    <span className="text-[11px] text-muted-foreground bg-muted rounded-full px-2.5 py-0.5">
+                    <span className="text-[11px] text-on-surface-variant bg-surface-container px-3 py-1 rounded-full uppercase tracking-wide">
                       {dayLabel(date)}
                     </span>
                   </div>
@@ -268,10 +267,10 @@ export default function ChatTab({ meetup, userId }: Props) {
                     className={`max-w-[78%] md:max-w-[68%] flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
                   >
                     <div
-                      className={`rounded-2xl px-4 py-2.5 ${
+                      className={`px-4 py-2.5 ${
                         isMe
-                          ? `bg-primary text-primary-foreground rounded-br-md ${sending ? 'opacity-70' : ''} ${failed ? 'ring-1 ring-destructive' : ''}`
-                          : 'bg-muted rounded-bl-md'
+                          ? `bg-primary-container text-on-primary-container rounded-[16px_16px_4px_16px] ${sending ? 'opacity-70' : ''} ${failed ? 'ring-1 ring-destructive' : ''}`
+                          : 'bg-[#F1F5F9] text-on-surface-variant rounded-[16px_16px_16px_4px]'
                       }`}
                     >
                       {!isMe && startGroup && (
@@ -279,7 +278,7 @@ export default function ChatTab({ meetup, userId }: Props) {
                       )}
                       <p className="text-sm whitespace-pre-wrap break-words">{item.content}</p>
                       <p
-                        className={`text-[10px] mt-1 flex items-center gap-1 ${isMe ? 'text-primary-foreground/60' : 'text-muted-foreground'}`}
+                        className={`text-[10px] mt-1 flex items-center gap-1 ${isMe ? 'text-on-primary-container/60' : 'text-on-surface-variant/60'}`}
                       >
                         {sending ? 'Sending…' : timeLabel(item.createdAt)}
                         {failed && <AlertCircle className="w-3 h-3 text-destructive" />}
@@ -332,30 +331,30 @@ export default function ChatTab({ meetup, userId }: Props) {
           </p>
         )}
 
-        <div className="pt-2 border-t">
+        <div className="pt-2 border-t border-surface-container">
           <div className="flex gap-2">
-            <Input
+            <input
               value={message}
               onChange={(e) => {
                 setMessage(e.target.value);
                 broadcastTyping();
               }}
               placeholder="Type a message..."
-              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-              className="flex-1"
+              onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
+              className="flex-1 bg-[#F1F5F9] border-none rounded-2xl py-3 px-4 text-sm focus:ring-2 focus:ring-primary focus:bg-surface-container-lowest outline-none transition-all placeholder:text-on-surface-variant/50"
               aria-invalid={overLimit}
             />
-            <Button
-              size="icon"
+            <button
               onClick={handleSend}
               disabled={!message.trim() || overLimit}
+              className="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center shadow-md active:scale-95 transition-all disabled:opacity-50 shrink-0"
             >
               <Send className="w-4 h-4" />
-            </Button>
+            </button>
           </div>
           {message.length > MAX_LEN - 200 && (
             <p
-              className={`text-[11px] mt-1 text-right ${overLimit ? 'text-destructive' : 'text-muted-foreground'}`}
+              className={`text-[11px] mt-1 text-right ${overLimit ? 'text-destructive' : 'text-on-surface-variant'}`}
             >
               {message.length}/{MAX_LEN}
             </p>

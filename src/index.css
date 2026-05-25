@@ -35,6 +35,51 @@
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
 
+  /* Material 3 extended design tokens */
+  --color-surface: var(--surface);
+  --color-surface-container-lowest: var(--surface-container-lowest);
+  --color-surface-container-low: var(--surface-container-low);
+  --color-surface-container: var(--surface-container);
+  --color-surface-container-high: var(--surface-container-high);
+  --color-surface-container-highest: var(--surface-container-highest);
+  --color-surface-dim: var(--surface-dim);
+  --color-surface-bright: var(--surface-bright);
+  --color-surface-variant: var(--surface-variant);
+  --color-on-surface: var(--on-surface);
+  --color-on-surface-variant: var(--on-surface-variant);
+  --color-on-background: var(--on-background);
+  --color-on-primary: var(--on-primary);
+  --color-primary-container: var(--primary-container);
+  --color-on-primary-container: var(--on-primary-container);
+  --color-primary-fixed: var(--primary-fixed);
+  --color-primary-fixed-dim: var(--primary-fixed-dim);
+  --color-on-primary-fixed: var(--on-primary-fixed);
+  --color-on-primary-fixed-variant: var(--on-primary-fixed-variant);
+  --color-inverse-primary: var(--inverse-primary);
+  --color-on-secondary: var(--on-secondary);
+  --color-secondary-container: var(--secondary-container);
+  --color-on-secondary-container: var(--on-secondary-container);
+  --color-secondary-fixed: var(--secondary-fixed);
+  --color-secondary-fixed-dim: var(--secondary-fixed-dim);
+  --color-on-secondary-fixed: var(--on-secondary-fixed);
+  --color-on-secondary-fixed-variant: var(--on-secondary-fixed-variant);
+  --color-tertiary: var(--tertiary);
+  --color-on-tertiary: var(--on-tertiary);
+  --color-tertiary-container: var(--tertiary-container);
+  --color-on-tertiary-container: var(--on-tertiary-container);
+  --color-tertiary-fixed: var(--tertiary-fixed);
+  --color-tertiary-fixed-dim: var(--tertiary-fixed-dim);
+  --color-on-tertiary-fixed: var(--on-tertiary-fixed);
+  --color-on-tertiary-fixed-variant: var(--on-tertiary-fixed-variant);
+  --color-on-error: var(--on-error);
+  --color-error-container: var(--error-container);
+  --color-on-error-container: var(--on-error-container);
+  --color-outline: var(--outline);
+  --color-outline-variant: var(--outline-variant);
+  --color-inverse-surface: var(--inverse-surface);
+  --color-inverse-on-surface: var(--inverse-on-surface);
+  --color-surface-tint: var(--surface-tint);
+
   --color-sidebar: hsl(var(--sidebar-background));
   --color-sidebar-foreground: hsl(var(--sidebar-foreground));
   --color-sidebar-primary: hsl(var(--sidebar-primary));
@@ -64,16 +109,16 @@
 
 /* Light mode colour tokens */
 :root {
-  --background: 220 20% 97%;
-  --foreground: 224 71% 4%;
+  --background: 233 100% 99%;
+  --foreground: 209 71% 11%;
 
   --card: 0 0% 100%;
-  --card-foreground: 224 71% 4%;
+  --card-foreground: 209 71% 11%;
 
   --popover: 0 0% 100%;
-  --popover-foreground: 224 71% 4%;
+  --popover-foreground: 209 71% 11%;
 
-  --primary: 239 84% 67%;
+  --primary: 239 62% 55%;
   --primary-foreground: 0 0% 100%;
 
   --secondary: 220 14% 96%;
@@ -85,23 +130,68 @@
   --accent: 220 14% 96%;
   --accent-foreground: 224 71% 4%;
 
-  --destructive: 0 84% 60%;
+  --destructive: 0 76% 40%;
   --destructive-foreground: 0 0% 100%;
 
   --border: 220 13% 91%;
   --input: 220 13% 91%;
-  --ring: 239 84% 67%;
+  --ring: 239 62% 55%;
 
   --radius: 0.5rem;
 
   --sidebar-background: 0 0% 98%;
   --sidebar-foreground: 240 5.3% 26.1%;
-  --sidebar-primary: 239 84% 67%;
+  --sidebar-primary: 239 62% 55%;
   --sidebar-primary-foreground: 0 0% 100%;
   --sidebar-accent: 240 4.8% 95.9%;
   --sidebar-accent-foreground: 240 5.9% 10%;
   --sidebar-border: 220 13% 91%;
-  --sidebar-ring: 239 84% 67%;
+  --sidebar-ring: 239 62% 55%;
+
+  /* Material 3 extended token values */
+  --surface: #f8f9ff;
+  --surface-container-lowest: #ffffff;
+  --surface-container-low: #eff4ff;
+  --surface-container: #e5eeff;
+  --surface-container-high: #dce9ff;
+  --surface-container-highest: #d3e4fe;
+  --surface-dim: #cbdbf5;
+  --surface-bright: #f8f9ff;
+  --surface-variant: #d3e4fe;
+  --on-surface: #0b1c30;
+  --on-surface-variant: #464554;
+  --on-background: #0b1c30;
+  --on-primary: #ffffff;
+  --primary-container: #6063ee;
+  --on-primary-container: #fffbff;
+  --primary-fixed: #e1e0ff;
+  --primary-fixed-dim: #c0c1ff;
+  --on-primary-fixed: #07006c;
+  --on-primary-fixed-variant: #2f2ebe;
+  --inverse-primary: #c0c1ff;
+  --on-secondary: #ffffff;
+  --secondary-container: #dce0e4;
+  --on-secondary-container: #5e6367;
+  --secondary-fixed: #dfe3e7;
+  --secondary-fixed-dim: #c3c7cb;
+  --on-secondary-fixed: #171c1f;
+  --on-secondary-fixed-variant: #43474b;
+  --tertiary: #006c49;
+  --on-tertiary: #ffffff;
+  --tertiary-container: #00885d;
+  --on-tertiary-container: #000703;
+  --tertiary-fixed: #6ffbbe;
+  --tertiary-fixed-dim: #4edea3;
+  --on-tertiary-fixed: #002113;
+  --on-tertiary-fixed-variant: #005236;
+  --on-error: #ffffff;
+  --error-container: #ffdad6;
+  --on-error-container: #93000a;
+  --outline: #767586;
+  --outline-variant: #c7c4d7;
+  --inverse-surface: #213145;
+  --inverse-on-surface: #eaf1ff;
+  --surface-tint: #494bd6;
 }
 
 /* Dark mode colour tokens */
@@ -157,5 +247,12 @@
 @layer utilities {
   .soft-glow {
     box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.05);
+  }
+  .pattern-bg {
+    background-image: radial-gradient(#6063ee 0.5px, transparent 0.5px),
+                      radial-gradient(#6063ee 0.5px, transparent 0.5px);
+    background-size: 20px 20px;
+    background-position: 0 0, 10px 10px;
+    opacity: 0.05;
   }
 }

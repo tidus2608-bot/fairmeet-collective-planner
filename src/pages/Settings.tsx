@@ -18,7 +18,7 @@ import {
 } from '@/hooks/useUserPreferences';
 
 const ALL_CATEGORIES = ['Food', 'Coffee', 'Drinks'] as const;
-const PRICE_LABELS: Record<number, string> = { 0: 'Free', 1: '$', 2: '$$', 3: '$$$', 4: '$$$$' };
+const PRICE_LABELS: Record<number, string> = { 1: '$', 2: '$$', 3: '$$$', 4: '$$$$' };
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -167,7 +167,7 @@ export default function Settings() {
           <CardContent className="p-4 space-y-3">
             <Label className="font-semibold">Price range</Label>
             <div className="flex gap-2 flex-wrap">
-              {[0, 1, 2, 3, 4].map((lvl) => (
+              {[1, 2, 3, 4].map((lvl) => (
                 <Button
                   key={lvl}
                   type="button"
