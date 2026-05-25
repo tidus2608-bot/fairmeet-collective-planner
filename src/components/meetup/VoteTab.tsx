@@ -1,4 +1,4 @@
-import { ThumbsUp, ThumbsDown, Crown, Clock, MapPin } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, Crown, Clock, MapPin, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { MeetupRow, useVoteVenue, useConfirmVenue, useSetMeetupStatus } from '@/hooks/useMeetups';
@@ -31,7 +31,7 @@ export default function VoteTab({ meetup, userId }: Props) {
 
   if (pollVenues.length === 0) {
     return (
-      <div className="text-center py-16 text-muted-foreground">
+      <div className="text-center py-16 text-on-surface-variant">
         <MapPin className="w-10 h-10 mx-auto opacity-30 mb-3" />
         <p className="text-lg font-medium">No venues in poll yet</p>
         <p className="text-sm mt-1">The organizer can add venues from the Venues tab</p>
@@ -65,9 +65,10 @@ export default function VoteTab({ meetup, userId }: Props) {
         </Button>
       )}
 
-      <Card>
+      {/* Live Leaderboard */}
+      <Card className="border border-surface-container">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Live Leaderboard</CardTitle>
+          <CardTitle className="text-base text-on-surface">Live Leaderboard</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {sortedByVotes.map((v, idx) => {
@@ -77,16 +78,21 @@ export default function VoteTab({ meetup, userId }: Props) {
               <div key={v.id} className="space-y-1">
                 <div className="flex items-center justify-between text-sm">
                   <span className="flex items-center gap-2 min-w-0">
-                    {idx === 0 && <Crown className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />}
-                    <span className="font-medium truncate">{v.name}</span>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0
+                      ${idx === 0
+                        ? 'bg-tertiary-container text-on-tertiary'
+                        : 'bg-primary-container text-on-primary-container'}`}>
+                      {idx + 1}
+                    </div>
+                    <span className="font-medium truncate text-on-surface">{v.name}</span>
                   </span>
-                  <span className="text-muted-foreground font-medium ml-2 flex-shrink-0">
-                    {Math.round(pct)}%
+                  <span className="text-on-surface-variant font-medium ml-2 flex-shrink-0">
+                    {upvotes} vote{upvotes !== 1 ? 's' : ''}
                   </span>
                 </div>
-                <div className="w-full bg-muted rounded-full h-2.5 overflow-hidden">
+                <div className="w-full bg-surface-container-high rounded-full h-2 overflow-hidden">
                   <div
-                    className={`h-full rounded-full transition-all duration-500 ${idx === 0 ? 'bg-primary' : 'bg-primary/50'}`}
+                    className={`h-full rounded-full transition-all duration-500 ${idx === 0 ? 'bg-tertiary-container' : 'bg-primary-container'}`}
                     style={{ width: `${pct}%` }}
                   />
                 </div>
@@ -96,78 +102,108 @@ export default function VoteTab({ meetup, userId }: Props) {
         </CardContent>
       </Card>
 
-      <div className="grid items-start gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {/* Venue Cards */}
+      <div className="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {pollVenues.map((v) => {
           const upvotes = getUpvotes(v.id);
           const downvotes = getDownvotes(v.id);
           const myVoteType = getMyVoteType(v.id);
           const photo = venuePhotoUrl(v.photo_reference);
           const worst = venueWorstMinutes(v);
+          const rating = v.rating ? Number(v.rating) : null;
           return (
             <Card
               key={v.id}
-              className={
-                myVoteType === 'up'
-                  ? 'border-green-500'
+              className={`overflow-hidden border soft-glow transition-all active:scale-[0.98]
+                ${myVoteType === 'up'
+                  ? 'border-primary ring-2 ring-primary/20'
                   : myVoteType === 'down'
-                    ? 'border-red-400'
-                    : ''
-              }
+                    ? 'border-error-container ring-2 ring-error-container/20'
+                    : 'border-surface-container-high'}`}
             >
               <CardContent className="p-0">
-                {photo && (
-                  <img
-                    src={photo}
-                    alt={v.name}
-                    className="w-full h-28 object-cover rounded-t-lg"
-                    loading="lazy"
-                  />
-                )}
-                <div className="p-3 space-y-2">
-                  <h4 className="font-semibold text-sm truncate">{v.name}</h4>
+                {/* Image with overlay badges */}
+                <div className="relative h-48 w-full bg-surface-container-high">
+                  {photo ? (
+                    <img
+                      src={photo}
+                      alt={v.name}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-on-surface-variant/30">
+                      <MapPin className="w-8 h-8" />
+                    </div>
+                  )}
+                  {rating != null && (
+                    <div className="absolute top-3 left-3 bg-primary text-on-primary text-xs px-2 py-1 rounded-lg flex items-center gap-1 shadow-sm">
+                      <Star className="w-3 h-3 fill-current" />
+                      {rating.toFixed(1)}
+                    </div>
+                  )}
                   {worst != null && (
-                    <span className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Clock className="w-3 h-3" /> Worst trip {worst}m
-                    </span>
+                    <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-sm text-on-surface text-xs px-3 py-1 rounded-full flex items-center gap-1.5 shadow-sm">
+                      <Clock className="w-3 h-3 text-primary" />
+                      Worst: {worst}m
+                    </div>
                   )}
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant={myVoteType === 'up' ? 'default' : 'outline'}
-                      className={`flex-1 gap-1.5 ${myVoteType === 'up' ? 'bg-green-600 hover:bg-green-700 border-green-600' : ''}`}
-                      onClick={() => handleVote(v.id, 'up')}
-                      disabled={voteVenue.isPending}
-                    >
-                      <ThumbsUp className="w-3.5 h-3.5" />
-                      {upvotes}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={myVoteType === 'down' ? 'destructive' : 'outline'}
-                      className="flex-1 gap-1.5"
-                      onClick={() => handleVote(v.id, 'down')}
-                      disabled={voteVenue.isPending}
-                    >
-                      <ThumbsDown className="w-3.5 h-3.5" />
-                      {downvotes}
-                    </Button>
+                </div>
+
+                {/* Card body */}
+                <div className="p-4 space-y-3">
+                  <div>
+                    <h4 className="font-semibold text-base text-on-surface truncate">{v.name}</h4>
+                    {v.address && (
+                      <p className="text-sm text-on-surface-variant truncate mt-0.5">{v.address}</p>
+                    )}
                   </div>
-                  {isOrganizer && meetup.status === 'Voting' && (
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      className="w-full gap-1.5"
-                      onClick={() =>
-                        confirmVenue.mutate({
-                          meetupId: meetup.id,
-                          venue: { name: v.name, address: v.address, location: v.location },
-                        })
-                      }
-                      disabled={confirmVenue.isPending}
-                    >
-                      <Crown className="w-3.5 h-3.5" /> Confirm Winner
-                    </Button>
-                  )}
+
+                  {/* Vote buttons */}
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => handleVote(v.id, 'up')}
+                        disabled={voteVenue.isPending}
+                        className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors disabled:opacity-50
+                          ${myVoteType === 'up'
+                            ? 'bg-primary-container text-on-primary-container'
+                            : 'bg-surface-container-high hover:bg-primary-container hover:text-on-primary-container'}`}
+                      >
+                        <ThumbsUp className="w-4 h-4" />
+                      </button>
+                      <span className="text-sm font-medium text-on-surface-variant min-w-[1ch]">{upvotes}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => handleVote(v.id, 'down')}
+                        disabled={voteVenue.isPending}
+                        className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors disabled:opacity-50
+                          ${myVoteType === 'down'
+                            ? 'bg-error-container text-on-error-container'
+                            : 'bg-surface-container-high hover:bg-error-container hover:text-on-error-container'}`}
+                      >
+                        <ThumbsDown className="w-4 h-4" />
+                      </button>
+                      <span className="text-sm font-medium text-on-surface-variant min-w-[1ch]">{downvotes}</span>
+                    </div>
+                    {isOrganizer && meetup.status === 'Voting' && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="ml-auto gap-1.5"
+                        onClick={() =>
+                          confirmVenue.mutate({
+                            meetupId: meetup.id,
+                            venue: { name: v.name, address: v.address, location: v.location },
+                          })
+                        }
+                        disabled={confirmVenue.isPending}
+                      >
+                        <Crown className="w-3.5 h-3.5" /> Confirm
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>

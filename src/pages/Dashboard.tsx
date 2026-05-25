@@ -65,9 +65,9 @@ export default function Dashboard() {
   };
 
   const statusColor = (status: string) => {
-    if (status === 'Planning') return 'bg-blue-100 text-blue-700';
-    if (status === 'Voting') return 'bg-amber-100 text-amber-700';
-    return 'bg-green-100 text-green-700';
+    if (status === 'Planning') return 'bg-surface-container text-on-surface-variant';
+    if (status === 'Voting') return 'bg-primary-container/10 text-primary';
+    return 'bg-tertiary-container/10 text-tertiary';
   };
 
   // Live preview for the create dialog
@@ -75,7 +75,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-10 bg-card border-b">
+      <header className="sticky top-0 z-10 bg-surface-container-lowest border-b border-surface-container shadow-[0px_4px_20px_rgba(0,0,0,0.05)]">
         <div className="mx-auto flex w-full max-w-lg items-center justify-between px-4 py-3 sm:px-6 md:max-w-3xl">
           <h1 className="text-xl font-bold text-primary">FairMeet</h1>
           <div className="flex items-center gap-3">

@@ -55,14 +55,14 @@ export default function MeetupDetails() {
   ).length;
 
   const statusColor = (status: string) => {
-    if (status === 'Planning') return 'bg-blue-100 text-blue-700';
-    if (status === 'Voting') return 'bg-amber-100 text-amber-700';
-    return 'bg-green-100 text-green-700';
+    if (status === 'Planning') return 'bg-surface-container text-on-surface-variant';
+    if (status === 'Voting') return 'bg-primary-container/10 text-primary';
+    return 'bg-tertiary-container/10 text-tertiary';
   };
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-10 bg-card border-b px-4 py-3">
+      <header className="sticky top-0 z-10 bg-surface-container-lowest border-b border-surface-container shadow-[0px_4px_20px_rgba(0,0,0,0.05)] px-4 py-3">
         <div className="flex items-center gap-3 mx-auto w-full max-w-lg md:max-w-3xl">
           <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')}>
             <ArrowLeft className="w-5 h-5" />

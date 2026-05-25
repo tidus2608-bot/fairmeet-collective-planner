@@ -361,7 +361,7 @@ export default function PreferencesTab({ meetup, userId }: Props) {
       </Card>
 
       <Button
-        className="w-full gap-2"
+        className="w-full gap-2 py-4 h-auto rounded-2xl font-semibold shadow-lg shadow-primary/20"
         onClick={handleSubmit}
         disabled={isPending}
       >
