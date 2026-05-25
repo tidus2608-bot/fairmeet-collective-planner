@@ -1,22 +1,31 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Navigation, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
+import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 import {
   MeetupRow,
   useUpdateParticipantLocation,
   useUpdateTransportMode,
   useUpdatePreferences,
 } from '@/hooks/useMeetups';
+import { useUserPreferences, useSaveUserPreferences } from '@/hooks/useUserPreferences';
 import PlacesAutocomplete from '@/components/PlacesAutocomplete';
 import { toast } from 'sonner';
 
-const VENUE_TYPES = ['Outdoor seating', 'Quiet', 'Vegan options'] as const;
+const CATEGORIES = ['Food', 'Coffee', 'Drinks'] as const;
+const PRICE_LABELS = ['Free', '$', '$$', '$$$', '$$$$'];
+const RATING_OPTIONS: { label: string; value: number }[] = [
+  { label: 'Any', value: 0 },
+  { label: '3★+', value: 3 },
+  { label: '4★+', value: 4 },
+  { label: '4.5★+', value: 4.5 },
+];
 
 interface Props {
   meetup: MeetupRow;
@@ -28,6 +37,8 @@ export default function PreferencesTab({ meetup, userId }: Props) {
   const updateLocation = useUpdateParticipantLocation();
   const updateTransport = useUpdateTransportMode();
   const updatePreferences = useUpdatePreferences();
+  const { data: userPrefs } = useUserPreferences();
+  const savePref = useSaveUserPreferences();
 
   const [maxTravelTime, setMaxTravelTime] = useState<number | null>(
     myParticipant?.max_travel_time ?? null,
@@ -35,9 +46,22 @@ export default function PreferencesTab({ meetup, userId }: Props) {
   const [fairnessImportance, setFairnessImportance] = useState(
     Math.round((myParticipant?.fairness_importance ?? 0.5) * 100),
   );
-  const [selectedVenueTypes, setSelectedVenueTypes] = useState<string[]>(
-    myParticipant?.venue_types ?? [],
-  );
+
+  // Venue preference state — seeded from global user_preferences once loaded
+  const [categories, setCategories] = useState<string[]>(['Food', 'Coffee', 'Drinks']);
+  const [priceLevels, setPriceLevels] = useState<number[]>([0, 1, 2, 3, 4]);
+  const [minRating, setMinRating] = useState<number>(0);
+  const [keyword, setKeyword] = useState<string>('');
+  const [openNow, setOpenNow] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!userPrefs) return;
+    setCategories(userPrefs.categories);
+    setPriceLevels(userPrefs.price_levels);
+    setMinRating(userPrefs.min_rating);
+    setKeyword(userPrefs.keyword);
+    setOpenNow(userPrefs.open_now);
+  }, [userPrefs]);
 
   const handleUseCurrentLocation = () => {
     if (!navigator.geolocation) {
@@ -57,28 +81,43 @@ export default function PreferencesTab({ meetup, userId }: Props) {
     );
   };
 
-  const handleVenueTypeToggle = (type: string) => {
-    setSelectedVenueTypes((prev) =>
-      prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type],
+  const toggleCategory = (cat: string) => {
+    setCategories((prev) =>
+      prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat],
     );
   };
 
-  const handleSubmit = () => {
-    updatePreferences.mutate(
-      {
-        meetupId: meetup.id,
-        maxTravelTime,
-        fairnessImportance: fairnessImportance / 100,
-        venueTypes: selectedVenueTypes,
-      },
-      {
-        onSuccess: () => toast.success('Preferences saved!'),
-        onError: () => toast.error('Could not save preferences'),
-      },
+  const togglePrice = (lvl: number) => {
+    setPriceLevels((prev) =>
+      prev.includes(lvl) ? prev.filter((l) => l !== lvl) : [...prev, lvl],
     );
+  };
+
+  const handleSubmit = async () => {
+    try {
+      await Promise.all([
+        updatePreferences.mutateAsync({
+          meetupId: meetup.id,
+          maxTravelTime,
+          fairnessImportance: fairnessImportance / 100,
+        }),
+        savePref.mutateAsync({
+          categories,
+          min_rating: minRating,
+          max_travel_minutes: maxTravelTime ?? 9999,
+          price_levels: priceLevels,
+          keyword: keyword.trim(),
+          open_now: openNow,
+        }),
+      ]);
+      toast.success('Preferences saved!');
+    } catch {
+      toast.error('Could not save preferences');
+    }
   };
 
   const fairnessLabel = fairnessImportance < 34 ? 'Low' : fairnessImportance < 67 ? 'Medium' : 'High';
+  const isPending = updatePreferences.isPending || savePref.isPending;
 
   return (
     <div className="space-y-4">
@@ -195,29 +234,90 @@ export default function PreferencesTab({ meetup, userId }: Props) {
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Venue Preferences</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
-          {VENUE_TYPES.map((type) => (
-            <div key={type} className="flex items-center gap-3">
-              <Checkbox
-                id={`venue-type-${type}`}
-                checked={selectedVenueTypes.includes(type)}
-                onCheckedChange={() => handleVenueTypeToggle(type)}
-              />
-              <Label htmlFor={`venue-type-${type}`} className="cursor-pointer font-normal">
-                {type}
-              </Label>
+        <CardContent className="space-y-5">
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">What type?</Label>
+            <div className="flex flex-wrap gap-2">
+              {CATEGORIES.map((cat) => (
+                <Button
+                  key={cat}
+                  type="button"
+                  size="sm"
+                  variant={categories.includes(cat) ? 'default' : 'outline'}
+                  onClick={() => toggleCategory(cat)}
+                >
+                  {cat}
+                </Button>
+              ))}
             </div>
-          ))}
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Price</Label>
+            <div className="flex flex-wrap gap-2">
+              {PRICE_LABELS.map((label, lvl) => (
+                <Button
+                  key={lvl}
+                  type="button"
+                  size="sm"
+                  variant={priceLevels.includes(lvl) ? 'default' : 'outline'}
+                  onClick={() => togglePrice(lvl)}
+                >
+                  {label}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Min. Rating</Label>
+            <div className="flex flex-wrap gap-2">
+              {RATING_OPTIONS.map(({ label, value }) => (
+                <Button
+                  key={value}
+                  type="button"
+                  size="sm"
+                  variant={minRating === value ? 'default' : 'outline'}
+                  onClick={() => setMinRating(value)}
+                >
+                  {label}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="keyword" className="text-sm font-medium">
+              Keyword
+            </Label>
+            <Input
+              id="keyword"
+              placeholder="e.g. quiet, rooftop, vegan"
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value)}
+            />
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Checkbox
+              id="open-now"
+              checked={openNow}
+              onCheckedChange={(v) => setOpenNow(!!v)}
+            />
+            <Label htmlFor="open-now" className="text-sm font-medium cursor-pointer">
+              Open now only
+            </Label>
+          </div>
         </CardContent>
       </Card>
 
       <Button
         className="w-full gap-2"
         onClick={handleSubmit}
-        disabled={updatePreferences.isPending}
+        disabled={isPending}
       >
         <Check className="w-4 h-4" />
-        {updatePreferences.isPending ? 'Saving…' : 'Submit Preferences'}
+        {isPending ? 'Saving…' : 'Submit Preferences'}
       </Button>
     </div>
   );
