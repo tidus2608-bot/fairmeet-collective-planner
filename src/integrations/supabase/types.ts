@@ -229,6 +229,7 @@ export type Database = {
         Row: {
           categories: string[]
           created_at: string
+          cuisine: string
           id: string
           keyword: string
           max_travel_minutes: number
@@ -241,6 +242,7 @@ export type Database = {
         Insert: {
           categories?: string[]
           created_at?: string
+          cuisine?: string
           id?: string
           keyword?: string
           max_travel_minutes?: number
@@ -253,6 +255,7 @@ export type Database = {
         Update: {
           categories?: string[]
           created_at?: string
+          cuisine?: string
           id?: string
           keyword?: string
           max_travel_minutes?: number

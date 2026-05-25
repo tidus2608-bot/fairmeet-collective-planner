@@ -22,15 +22,57 @@ const CATEGORY_QUERY: Record<string, string> = {
   Drinks: 'bar',
 };
 
+// Cuisine/sub-type label -> Google Places v1 includedType value
+const CUISINE_TO_PLACE_TYPE: Record<string, string> = {
+  'Italian': 'italian_restaurant',
+  'Japanese': 'japanese_restaurant',
+  'Korean': 'korean_restaurant',
+  'Chinese': 'chinese_restaurant',
+  'Thai': 'thai_restaurant',
+  'Indian': 'indian_restaurant',
+  'Mexican': 'mexican_restaurant',
+  'Vietnamese': 'vietnamese_restaurant',
+  'American': 'american_restaurant',
+  'Mediterranean': 'mediterranean_restaurant',
+  'French': 'french_restaurant',
+  'Wine Bar': 'wine_bar',
+  'Cocktail Bar': 'cocktail_bar',
+  'Pub': 'pub',
+  'Night Club': 'night_club',
+};
+
+// Which top-level category does each cuisine place type belong to?
+const CUISINE_PARENT: Record<string, string> = {
+  italian_restaurant: 'Food', japanese_restaurant: 'Food',
+  korean_restaurant: 'Food',  chinese_restaurant: 'Food',
+  thai_restaurant: 'Food',    indian_restaurant: 'Food',
+  mexican_restaurant: 'Food', vietnamese_restaurant: 'Food',
+  american_restaurant: 'Food', mediterranean_restaurant: 'Food',
+  french_restaurant: 'Food',
+  wine_bar: 'Drinks', cocktail_bar: 'Drinks', pub: 'Drinks', night_club: 'Drinks',
+};
+
 // Google place type -> our display category (used to label results from the API)
 const GOOGLE_TYPE_TO_CATEGORY: Record<string, string> = {
-  // Food
+  // Food (generic)
   restaurant: 'Food',
   meal_takeaway: 'Food',
   meal_delivery: 'Food',
   bakery: 'Food',
   fast_food_restaurant: 'Food',
   food: 'Food',
+  // Food (cuisine-specific)
+  italian_restaurant: 'Food',
+  japanese_restaurant: 'Food',
+  korean_restaurant: 'Food',
+  chinese_restaurant: 'Food',
+  thai_restaurant: 'Food',
+  indian_restaurant: 'Food',
+  mexican_restaurant: 'Food',
+  vietnamese_restaurant: 'Food',
+  american_restaurant: 'Food',
+  mediterranean_restaurant: 'Food',
+  french_restaurant: 'Food',
   // Coffee
   cafe: 'Coffee',
   coffee_shop: 'Coffee',
@@ -93,6 +135,7 @@ interface Prefs {
   price_levels: number[];
   keyword: string;
   open_now: boolean;
+  cuisine: string;
 }
 
 const DEFAULT_PREFS: Prefs = {
@@ -102,6 +145,7 @@ const DEFAULT_PREFS: Prefs = {
   price_levels: [1, 2, 3, 4],
   keyword: '',
   open_now: false,
+  cuisine: '',
 };
 
 interface Participant {
@@ -168,7 +212,7 @@ Deno.serve(async (req) => {
       const supabase = createClient(supabaseUrl, serviceKey);
       const { data: prefRows } = await supabase
         .from('user_preferences')
-        .select('user_id, categories, min_rating, max_travel_minutes, price_levels, keyword, open_now')
+        .select('user_id, categories, min_rating, max_travel_minutes, price_levels, keyword, open_now, cuisine')
         .in('user_id', located.map((p) => p.user_id));
       for (const r of prefRows || []) {
         prefsByUser.set(r.user_id, {
@@ -178,6 +222,7 @@ Deno.serve(async (req) => {
           price_levels: r.price_levels?.length ? r.price_levels : DEFAULT_PREFS.price_levels,
           keyword: (r.keyword ?? '').trim(),
           open_now: r.open_now ?? false,
+          cuisine: (r.cuisine ?? '').trim(),
         });
       }
     }
@@ -256,12 +301,17 @@ Deno.serve(async (req) => {
         for (const cat of cats) {
           const term = CATEGORY_QUERY[cat];
           if (!term) continue;
-          const textQuery = [hardQuery, term].filter(Boolean).join(' ');
+          const cuisinePlaceType = prefs.cuisine ? CUISINE_TO_PLACE_TYPE[prefs.cuisine] : undefined;
+          const cuisineParent = cuisinePlaceType ? CUISINE_PARENT[cuisinePlaceType] : undefined;
+          const useCuisineType = !!cuisinePlaceType && cuisineParent === cat;
           const body: Record<string, unknown> = {
-            textQuery,
+            textQuery: useCuisineType
+              ? (hardQuery || cat)
+              : [hardQuery, term].filter(Boolean).join(' '),
             locationRestriction,
             maxResultCount: MAX_RESULTS,
           };
+          if (useCuisineType) body.includedType = cuisinePlaceType;
           if (priceLevels.length) body.priceLevels = priceLevels;
           if (minRating > 0) body.minRating = minRating;
           if (openNow) body.openNow = true;
