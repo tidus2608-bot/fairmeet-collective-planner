@@ -342,7 +342,7 @@ export function useUpdatePreferences() {
   return useMutation({
     mutationFn: async ({ meetupId, maxTravelTime, fairnessImportance, venueTypes }: {
       meetupId: string;
-      maxTravelTime: number;
+      maxTravelTime: number | null;
       fairnessImportance: number;
       venueTypes: string[];
     }) => {
@@ -356,6 +356,14 @@ export function useUpdatePreferences() {
         .eq('meetup_id', meetupId)
         .eq('user_id', user!.id);
       if (error) throw error;
+
+      const { error: prefError } = await supabase
+        .from('user_preferences')
+        .upsert(
+          { user_id: user!.id, max_travel_minutes: maxTravelTime ?? 9999 },
+          { onConflict: 'user_id' },
+        );
+      if (prefError) throw prefError;
     },
     onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ['meetup', v.meetupId] }),
   });

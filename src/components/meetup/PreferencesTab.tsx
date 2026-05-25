@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Checkbox } from '@/components/ui/checkbox';
+import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   MeetupRow,
@@ -28,7 +29,9 @@ export default function PreferencesTab({ meetup, userId }: Props) {
   const updateTransport = useUpdateTransportMode();
   const updatePreferences = useUpdatePreferences();
 
-  const [maxTravelTime, setMaxTravelTime] = useState(myParticipant?.max_travel_time ?? 60);
+  const [maxTravelTime, setMaxTravelTime] = useState<number | null>(
+    myParticipant?.max_travel_time ?? null,
+  );
   const [fairnessImportance, setFairnessImportance] = useState(
     Math.round((myParticipant?.fairness_importance ?? 0.5) * 100),
   );
@@ -127,19 +130,45 @@ export default function PreferencesTab({ meetup, userId }: Props) {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <Label className="text-sm font-medium">Max Travel Time</Label>
-              <span className="text-sm font-semibold text-primary">{maxTravelTime} min</span>
+              <span className="text-sm font-semibold text-primary">
+                {maxTravelTime === null ? 'Any' : `${maxTravelTime} min`}
+              </span>
             </div>
-            <Slider
-              min={15}
-              max={60}
-              step={5}
-              value={[maxTravelTime]}
-              onValueChange={([v]) => setMaxTravelTime(v)}
-            />
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>15 min</span>
-              <span>60 min</span>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant={maxTravelTime === null ? 'default' : 'outline'}
+                className={cn('flex-1', maxTravelTime === null && 'pointer-events-none')}
+                onClick={() => setMaxTravelTime(null)}
+              >
+                Not important
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={maxTravelTime !== null ? 'default' : 'outline'}
+                className="flex-1"
+                onClick={() => setMaxTravelTime((v) => v ?? 30)}
+              >
+                Set a limit
+              </Button>
             </div>
+            {maxTravelTime !== null && (
+              <>
+                <Slider
+                  min={15}
+                  max={120}
+                  step={5}
+                  value={[maxTravelTime]}
+                  onValueChange={([v]) => setMaxTravelTime(v)}
+                />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>15 min</span>
+                  <span>120 min</span>
+                </div>
+              </>
+            )}
           </div>
 
           <div className="space-y-3">
