@@ -340,19 +340,14 @@ export function useUpdatePreferences() {
   const { user } = useAuth();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ meetupId, maxTravelTime, fairnessImportance, venueTypes }: {
+    mutationFn: async ({ meetupId, maxTravelTime, fairnessImportance }: {
       meetupId: string;
-      maxTravelTime: number;
+      maxTravelTime: number | null;
       fairnessImportance: number;
-      venueTypes: string[];
     }) => {
       const { error } = await supabase
         .from('participants')
-        .update({
-          max_travel_time: maxTravelTime,
-          fairness_importance: fairnessImportance,
-          venue_types: venueTypes,
-        })
+        .update({ max_travel_time: maxTravelTime, fairness_importance: fairnessImportance })
         .eq('meetup_id', meetupId)
         .eq('user_id', user!.id);
       if (error) throw error;

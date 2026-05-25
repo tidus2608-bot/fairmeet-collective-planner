@@ -233,6 +233,7 @@ export type Database = {
           keyword: string
           max_travel_minutes: number
           min_rating: number
+          open_now: boolean
           price_levels: number[]
           updated_at: string
           user_id: string
@@ -244,6 +245,7 @@ export type Database = {
           keyword?: string
           max_travel_minutes?: number
           min_rating?: number
+          open_now?: boolean
           price_levels?: number[]
           updated_at?: string
           user_id: string
@@ -255,6 +257,7 @@ export type Database = {
           keyword?: string
           max_travel_minutes?: number
           min_rating?: number
+          open_now?: boolean
           price_levels?: number[]
           updated_at?: string
           user_id?: string

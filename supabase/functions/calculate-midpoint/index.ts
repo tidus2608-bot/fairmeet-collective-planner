@@ -92,6 +92,7 @@ interface Prefs {
   max_travel_minutes: number;
   price_levels: number[];
   keyword: string;
+  open_now: boolean;
 }
 
 const DEFAULT_PREFS: Prefs = {
@@ -100,6 +101,7 @@ const DEFAULT_PREFS: Prefs = {
   max_travel_minutes: 60,
   price_levels: [1, 2, 3, 4],
   keyword: '',
+  open_now: false,
 };
 
 interface Participant {
@@ -166,7 +168,7 @@ Deno.serve(async (req) => {
       const supabase = createClient(supabaseUrl, serviceKey);
       const { data: prefRows } = await supabase
         .from('user_preferences')
-        .select('user_id, categories, min_rating, max_travel_minutes, price_levels, keyword')
+        .select('user_id, categories, min_rating, max_travel_minutes, price_levels, keyword, open_now')
         .in('user_id', located.map((p) => p.user_id));
       for (const r of prefRows || []) {
         prefsByUser.set(r.user_id, {
@@ -175,6 +177,7 @@ Deno.serve(async (req) => {
           max_travel_minutes: r.max_travel_minutes ?? DEFAULT_PREFS.max_travel_minutes,
           price_levels: r.price_levels?.length ? r.price_levels : DEFAULT_PREFS.price_levels,
           keyword: (r.keyword ?? '').trim(),
+          open_now: r.open_now ?? false,
         });
       }
     }
@@ -200,6 +203,8 @@ Deno.serve(async (req) => {
     const minRating = Math.max(0, ...allPrefs.map((pr) => pr.min_rating));
     // Travel cap: strictest member wins (lowest max_travel_minutes).
     const maxTravelMin = Math.min(...allPrefs.map((pr) => pr.max_travel_minutes));
+    // Open now: if any participant wants currently-open venues only, apply it.
+    const openNow = allPrefs.some((pr) => pr.open_now);
 
     // Hard constraints: AND of every distinct keyword across the group
     // (e.g. "Vegan AND Gluten-Free"), folded into the Places text query.
@@ -259,6 +264,7 @@ Deno.serve(async (req) => {
           };
           if (priceLevels.length) body.priceLevels = priceLevels;
           if (minRating > 0) body.minRating = minRating;
+          if (openNow) body.openNow = true;
 
           try {
             const res = await fetch('https://places.googleapis.com/v1/places:searchText', {
