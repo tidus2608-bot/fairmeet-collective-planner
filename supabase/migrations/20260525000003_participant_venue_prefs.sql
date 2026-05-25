@@ -1,0 +1,2 @@
+ALTER TABLE participants
+  ADD COLUMN IF NOT EXISTS venue_prefs JSONB DEFAULT NULL;
