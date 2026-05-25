@@ -13,8 +13,9 @@ import {
   useUpdateParticipantLocation,
   useUpdateTransportMode,
   useUpdatePreferences,
+  useUpdateVenuePrefs,
 } from '@/hooks/useMeetups';
-import { useUserPreferences, useSaveUserPreferences } from '@/hooks/useUserPreferences';
+import { useUserPreferences } from '@/hooks/useUserPreferences';
 import PlacesAutocomplete from '@/components/PlacesAutocomplete';
 import { toast } from 'sonner';
 
@@ -42,8 +43,8 @@ export default function PreferencesTab({ meetup, userId }: Props) {
   const updateLocation = useUpdateParticipantLocation();
   const updateTransport = useUpdateTransportMode();
   const updatePreferences = useUpdatePreferences();
+  const updateVenuePrefs = useUpdateVenuePrefs();
   const { data: userPrefs } = useUserPreferences();
-  const savePref = useSaveUserPreferences();
 
   const [maxTravelTime, setMaxTravelTime] = useState<number | null>(
     myParticipant?.max_travel_time ?? null,
@@ -61,14 +62,15 @@ export default function PreferencesTab({ meetup, userId }: Props) {
   const [cuisine, setCuisine] = useState<string>('');
 
   useEffect(() => {
-    if (!userPrefs) return;
-    setCategories(userPrefs.categories);
-    setPriceLevels(userPrefs.price_levels);
-    setMinRating(userPrefs.min_rating);
-    setKeyword(userPrefs.keyword);
-    setOpenNow(userPrefs.open_now);
-    setCuisine(userPrefs.cuisine);
-  }, [userPrefs]);
+    const source = myParticipant?.venue_prefs ?? userPrefs;
+    if (!source) return;
+    setCategories(source.categories);
+    setPriceLevels(source.price_levels);
+    setMinRating(source.min_rating);
+    setKeyword(source.keyword ?? '');
+    setOpenNow(source.open_now ?? false);
+    setCuisine(source.cuisine ?? '');
+  }, [myParticipant?.venue_prefs, userPrefs]);
 
   // Clear cuisine selection when its parent category is deselected
   useEffect(() => {
@@ -118,14 +120,17 @@ export default function PreferencesTab({ meetup, userId }: Props) {
           maxTravelTime,
           fairnessImportance: fairnessImportance / 100,
         }),
-        savePref.mutateAsync({
-          categories,
-          min_rating: minRating,
-          max_travel_minutes: maxTravelTime ?? 9999,
-          price_levels: priceLevels,
-          keyword: keyword.trim(),
-          open_now: openNow,
-          cuisine,
+        updateVenuePrefs.mutateAsync({
+          meetupId: meetup.id,
+          venuePrefs: {
+            categories,
+            min_rating: minRating,
+            max_travel_minutes: maxTravelTime ?? 9999,
+            price_levels: priceLevels,
+            keyword: keyword.trim(),
+            open_now: openNow,
+            cuisine,
+          },
         }),
       ]);
       toast.success('Preferences saved!');
@@ -135,7 +140,7 @@ export default function PreferencesTab({ meetup, userId }: Props) {
   };
 
   const fairnessLabel = fairnessImportance < 34 ? 'Low' : fairnessImportance < 67 ? 'Medium' : 'High';
-  const isPending = updatePreferences.isPending || savePref.isPending;
+  const isPending = updatePreferences.isPending || updateVenuePrefs.isPending;
   const showCuisineChips = categories.includes('Food') || categories.includes('Drinks');
 
   return (

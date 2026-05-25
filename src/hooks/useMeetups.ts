@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { Json, TablesInsert } from '@/integrations/supabase/types';
 import { useAuth } from './useAuth';
+import type { UserPreferences } from './useUserPreferences';
 
 export interface FinalVenue {
   name: string;
@@ -37,6 +38,7 @@ export interface ParticipantRow {
   max_travel_time: number | null;
   fairness_importance: number | null;
   venue_types: string[] | null;
+  venue_prefs: UserPreferences | null;
 }
 
 export interface VenueOpeningHours {
@@ -348,6 +350,22 @@ export function useUpdatePreferences() {
       const { error } = await supabase
         .from('participants')
         .update({ max_travel_time: maxTravelTime, fairness_importance: fairnessImportance })
+        .eq('meetup_id', meetupId)
+        .eq('user_id', user!.id);
+      if (error) throw error;
+    },
+    onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ['meetup', v.meetupId] }),
+  });
+}
+
+export function useUpdateVenuePrefs() {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ meetupId, venuePrefs }: { meetupId: string; venuePrefs: UserPreferences }) => {
+      const { error } = await supabase
+        .from('participants')
+        .update({ venue_prefs: venuePrefs as unknown as Json })
         .eq('meetup_id', meetupId)
         .eq('user_id', user!.id);
       if (error) throw error;

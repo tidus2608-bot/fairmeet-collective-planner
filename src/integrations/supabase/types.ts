@@ -141,6 +141,7 @@ export type Database = {
           transport_mode: string
           user_id: string
           user_name: string
+          venue_prefs: Json | null
           venue_types: string[] | null
         }
         Insert: {
@@ -156,6 +157,7 @@ export type Database = {
           transport_mode?: string
           user_id: string
           user_name: string
+          venue_prefs?: Json | null
           venue_types?: string[] | null
         }
         Update: {
@@ -171,6 +173,7 @@ export type Database = {
           transport_mode?: string
           user_id?: string
           user_name?: string
+          venue_prefs?: Json | null
           venue_types?: string[] | null
         }
         Relationships: [

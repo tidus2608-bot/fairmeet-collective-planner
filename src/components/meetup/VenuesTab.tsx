@@ -12,7 +12,6 @@ import { MeetupRow, VenueRow, useAddVenues, useToggleVenuePoll, useDeleteVenue }
 import MeetupMap from '@/components/MeetupMap';
 import AddVenueDialog from '@/components/meetup/AddVenueDialog';
 import { supabase } from '@/integrations/supabase/client';
-import { useUserPreferences, DEFAULT_PREFS } from '@/hooks/useUserPreferences';
 import { venuePhotoUrl, priceLevelLabel, venueWorstMinutes, venueTravelSpread, sortByFairness, fairZoneRadius } from '@/lib/venue';
 import type { Participant, TransportMode, VenueCategory } from '@/types/meetup';
 import { toast } from 'sonner';
@@ -28,7 +27,6 @@ export default function VenuesTab({ meetup, userId }: Props) {
   const addVenues = useAddVenues();
   const togglePoll = useToggleVenuePoll();
   const deleteVenue = useDeleteVenue();
-  const { data: prefs } = useUserPreferences();
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [loadingVenues, setLoadingVenues] = useState(false);
   const [confirmRefresh, setConfirmRefresh] = useState(false);
@@ -87,7 +85,6 @@ export default function VenuesTab({ meetup, userId }: Props) {
       const { data, error } = await supabase.functions.invoke('calculate-midpoint', {
         body: {
           participants: locatedParticipants,
-          preferences: prefs ?? DEFAULT_PREFS,
           departureTime,
         },
       });

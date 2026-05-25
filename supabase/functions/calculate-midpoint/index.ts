@@ -152,6 +152,7 @@ interface Participant {
   user_id: string;
   location: { lat: number; lng: number };
   transport_mode?: string;
+  venue_prefs?: Prefs | null;
 }
 
 interface Candidate {
@@ -204,16 +205,18 @@ Deno.serve(async (req) => {
     }
 
     // ===== Step 0: fetch EACH participant's stored preferences =====
+    // Prefer per-meetup venue_prefs if set; fall back to global user_preferences.
     // RLS only lets a user read their own prefs, so use the service-role client.
     const prefsByUser = new Map<string, Prefs>();
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    if (supabaseUrl && serviceKey) {
+    const needsLookup = located.filter((p) => !p.venue_prefs);
+    if (supabaseUrl && serviceKey && needsLookup.length > 0) {
       const supabase = createClient(supabaseUrl, serviceKey);
       const { data: prefRows } = await supabase
         .from('user_preferences')
         .select('user_id, categories, min_rating, max_travel_minutes, price_levels, keyword, open_now, cuisine')
-        .in('user_id', located.map((p) => p.user_id));
+        .in('user_id', needsLookup.map((p) => p.user_id));
       for (const r of prefRows || []) {
         prefsByUser.set(r.user_id, {
           categories: r.categories?.length ? r.categories : DEFAULT_PREFS.categories,
@@ -225,6 +228,9 @@ Deno.serve(async (req) => {
           cuisine: (r.cuisine ?? '').trim(),
         });
       }
+    }
+    for (const p of located) {
+      if (p.venue_prefs) prefsByUser.set(p.user_id, p.venue_prefs);
     }
     const prefsFor = (userId: string): Prefs => prefsByUser.get(userId) ?? DEFAULT_PREFS;
     const allPrefs = located.map((p) => prefsFor(p.user_id));
